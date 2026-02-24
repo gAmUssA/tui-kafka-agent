@@ -2,7 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NATIVE_BIN="$SCRIPT_DIR/build/native/nativeCompile/kafka-agent"
 JAR="$SCRIPT_DIR/build/libs/kafka-agent.jar"
+
+# Prefer native binary if it exists
+if [ -x "$NATIVE_BIN" ]; then
+    exec "$NATIVE_BIN" "$@"
+fi
 
 # Find java: SDKMAN > JAVA_HOME > PATH
 if [ -x "${SDKMAN_DIR:-$HOME/.sdkman}/candidates/java/current/bin/java" ]; then

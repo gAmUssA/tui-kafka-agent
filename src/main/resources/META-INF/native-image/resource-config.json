@@ -1,0 +1,9 @@
+{
+  "resources": {
+    "includes": [
+      {"pattern": ".*\\.yaml$"},
+      {"pattern": ".*\\.yml$"},
+      {"pattern": "META-INF/services/.*"}
+    ]
+  }
+}
