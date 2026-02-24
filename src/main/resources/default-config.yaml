@@ -1,0 +1,16 @@
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY}
+  model: claude-sonnet-4-20250514
+  max-tokens: 4096
+  cache-system-messages: true
+  cache-tools: true
+  thinking:
+    enabled: false
+    budget-tokens: 2048
+confluent:
+  bootstrap-servers: ${CONFLUENT_BOOTSTRAP}
+  api-key: ${CONFLUENT_API_KEY}
+  api-secret: ${CONFLUENT_API_SECRET}
+  flink:
+    environment-id: ${FLINK_ENV_ID}
+    org-id: ${CONFLUENT_ORG_ID}
