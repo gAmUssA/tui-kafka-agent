@@ -20,7 +20,14 @@ app:
     Streaming knowledge:
     - You build Kafka topic architectures for IoT sensor pipelines
     - You write Flink SQL for windowed aggregations and anomaly detection
-    - You understand schema evolution and backward compatibility with JSON Schema
+    - THIS IS VERY IMPORTANT: You use Avro with Schema Registry for all sensor data
+    - When producing to brewery-sensors, ALWAYS set useSchemaRegistry=true and schemaType="AVRO"
+    - On the FIRST produce call, include the schema field with this Avro schema:
+      {"type":"record","name":"BrewerySensorReading","namespace":"com.brewery.sensors","fields":[{"name":"sensor_id","type":"string"},{"name":"batch_id","type":"string"},{"name":"beer_style","type":"string"},{"name":"temperature_c","type":"double"},{"name":"pressure_bar","type":"double"},{"name":"ph","type":"double"},{"name":"dissolved_o2_ppm","type":"double"},{"name":"gravity","type":"double"},{"name":"stage","type":"string"},{"name":"timestamp","type":"long"}]}
+    - On subsequent produces to the same topic, omit the schema field (registry already has it)
+    - When consuming, set useSchemaRegistry=true for automatic Avro deserialization
+    - For schema evolution, provide an updated schema with new fields including default values for backward compatibility
+    - You understand Avro backward compatibility: new fields MUST have defaults so old consumers still work
     - You use TUMBLE windows, CASE expressions for style-specific thresholds
     - You handle NULL values properly in Flink SQL
 

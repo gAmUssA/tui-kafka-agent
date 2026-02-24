@@ -12,13 +12,13 @@ A terminal-based AI agent built with **LangChain4j** (Anthropic Claude) + **tui4
 
 ## Tech Stack
 
-| Layer | Technology | Role |
-|---|---|---|
-| TUI | tui4j 0.2.5 (Bubble Tea for Java) | Terminal UI framework — Elm Architecture |
-| AI | LangChain4j 1.9.1 + Anthropic Claude | Streaming chat, tool calling, memory |
-| Backend | Confluent MCP Server | 24 tools: topics, produce, consume, Flink SQL, schemas, tags, connectors |
-| Flink | Confluent Cloud Flink SQL | Real-time anomaly detection & aggregation |
-| Java | 21+ (virtual threads) | Async tool execution |
+| Layer   | Technology                           | Role                                                                     |
+|---------|--------------------------------------|--------------------------------------------------------------------------|
+| TUI     | tui4j 0.2.5 (Bubble Tea for Java)    | Terminal UI framework — Elm Architecture                                 |
+| AI      | LangChain4j 1.9.1 + Anthropic Claude | Streaming chat, tool calling, memory                                     |
+| Backend | Confluent MCP Server                 | 24 tools: topics, produce, consume, Flink SQL, schemas, tags, connectors |
+| Flink   | Confluent Cloud Flink SQL            | Real-time anomaly detection & aggregation                                |
+| Java    | 21+ (virtual threads)                | Async tool execution                                                     |
 
 ---
 
@@ -137,10 +137,11 @@ Each beer style has different normal ranges (agent knows this):
     - IPA @ 18–20°C (ale yeast)
     - Stout @ 20–22°C (higher temp yeast)
     - Pilsner @ 10–12°C (lager yeast — the agent knows this!)
-2. Calls `produce-message` for each reading
-3. Summarizes what it produced
+2. First `produce-message` call registers the Avro schema with Schema Registry (`useSchemaRegistry=true`, `schemaType=AVRO`, `schema` field with v1 definition)
+3. Subsequent calls reuse the registered schema (no `schema` field needed)
+4. Summarizes what it produced
 
-**Audience sees**: Messages being produced one by one, agent demonstrating domain knowledge about brewing temperatures. This is the first "Claude moment" — it doesn't just produce random data, it knows beer.
+**Audience sees**: Messages being produced one by one with Avro serialization. First message registers the schema — every subsequent message is validated against it. Agent demonstrates domain knowledge about brewing temperatures. This is the first "Claude moment" — it doesn't just produce random data, it knows beer.
 
 **MCP tools used**: `produce-message` (×30)
 
@@ -239,21 +240,18 @@ WHERE ABS(temperature_c - expected_temp) > 2.0
 
 ---
 
-### Act 6 — "Schema Evolution" (~1 min)
+### Act 6 — "Schema Evolution" (~1.5 min)
 
-**You say**: *"The brewery just installed humidity sensors. Add a humidity_percent field to the sensor data and produce some readings with the new field."*
+**You say**: *"The brewery just installed humidity sensors. Show me the current schema, then evolve it to add humidity_percent, and verify the new version registered."*
 
-**Agent does**:
-1. Calls `list-schemas` to see current schema for `brewery-sensors-value`
-2. Acknowledges the current schema
-3. Produces new messages that include `humidity_percent: 72.5` alongside all existing fields
-4. Explains schema compatibility — JSON Schema with Schema Registry allows additive fields
-5. Calls `list-schemas` again to show the schema was updated
-6. Verifies the Flink job still works with the new field (backward compatible)
+**Agent does** (three beats):
+1. Calls `list-schemas` — shows v1 Avro schema (10 fields, all required)
+2. Produces with an updated Avro schema adding `{"name": "humidity_percent", "type": "double", "default": 0.0}` — Schema Registry validates backward compatibility and registers v2
+3. Calls `list-schemas` again — shows v2 registered alongside v1, explains backward compatibility (default value means old consumers still work)
 
-**Audience sees**: Live schema evolution without breaking the pipeline. The agent handles it conversationally — no manual schema registry edits, no downtime. Shows the practical power of schema management.
+**Audience sees**: Version 1 to version 2, validated by Schema Registry, backward-compatible because of the default value. No downtime, no breaking consumers. The Flink job from Act 3 keeps running — this is production-grade schema evolution done through conversation.
 
-**MCP tools used**: `list-schemas`, `produce-message` (×3-5), `list-schemas`
+**MCP tools used**: `list-schemas`, `produce-message` (×1-3), `list-schemas`
 
 ---
 
@@ -344,7 +342,8 @@ String systemPrompt = """
     Streaming knowledge:
     - You build Kafka topic architectures
     - You write Flink SQL for windowed aggregations and anomaly detection
-    - You understand schema evolution and compatibility
+    - You use Avro with Schema Registry for all sensor data
+    - You understand Avro backward compatibility: new fields MUST have defaults
 
     When producing sensor data, generate realistic values appropriate for
     each beer style. When writing Flink SQL, use proper windowing and
@@ -455,7 +454,7 @@ brewmaster-agent/
 | Prompt caching   | `cacheSystemMessages` + `cacheTools` | System prompt + tool defs cached server-side → cheaper, faster                |
 | Flink SQL        | Agent writes it, human approves      | Shows AI capability while keeping human in the loop                           |
 | Data domain      | IoT Brewery                          | Memorable, relatable, intuitive anomaly detection story                       |
-| Schema evolution | JSON Schema (not AVRO)               | Additive fields "just work" — simpler demo                                    |
+| Schema evolution | Avro with Schema Registry            | Versioned schemas, compatibility enforcement, visible v1→v2 progression       |
 
 ## Risks & Mitigations
 

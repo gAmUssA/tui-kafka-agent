@@ -10,6 +10,7 @@
 - [ ] `~/.config/kafka-agent/config.yaml` copied from `docs/brewmaster-config.yaml`
 - [ ] Terminal at least 120 chars wide, dark background
 - [ ] Run `/reset-brewery` if topics exist from a previous run
+- [ ] Verify no stale schemas: run `list-schemas` — `brewery-sensors-value` should not exist
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent" in header with tool count
 
 ---
@@ -30,9 +31,9 @@
 **Type:**
 > I have 3 fermenters running — an IPA in fermenter-1, a Stout in fermenter-2, and a Pilsner in fermenter-3. Produce realistic sensor data for all of them.
 
-**What happens**: Agent produces ~30 messages with style-appropriate temperatures (IPA 18-20, Stout 20-22, Pilsner 10-12).
+**What happens**: First produce registers an Avro schema with Schema Registry. Subsequent calls reuse it. Agent produces ~30 messages with style-appropriate temperatures (IPA 18-20, Stout 20-22, Pilsner 10-12).
 
-**Talking point**: "The Pilsner is at 11 degrees — lager yeast. Claude knows beer. It's not random data, it's domain-aware generation."
+**Talking point**: "Notice it registered an Avro schema on the first message — every subsequent message is validated against that schema. No free-form JSON anymore."
 
 ---
 
@@ -72,14 +73,17 @@
 
 ---
 
-## Act 6 — "Schema Evolution" (~1 min)
+## Act 6 — "Schema Evolution" (~1.5 min)
 
 **Type:**
-> The brewery just installed humidity sensors. Add a humidity_percent field to the sensor data and produce some readings with the new field.
+> The brewery just installed humidity sensors. Show me the current schema, then evolve it to add humidity_percent, and verify the new version registered.
 
-**What happens**: Agent checks current schema, produces messages with the new field, verifies backward compatibility.
+**What happens** (three beats):
+1. Agent calls `list-schemas` — shows v1 schema (10 fields, all required)
+2. Agent produces with an updated Avro schema adding `{"name": "humidity_percent", "type": "double", "default": 0.0}` — Schema Registry accepts the backward-compatible v2
+3. Agent calls `list-schemas` again — shows v2 registered alongside v1
 
-**Talking point**: "Live schema evolution, no downtime, no manual registry edits. The Flink job keeps running — backward compatible. This is production-grade data engineering done through conversation."
+**Talking point**: "Version 1 to version 2, validated by Schema Registry, backward-compatible because of the default value. No downtime, no breaking consumers."
 
 ---
 
@@ -91,10 +95,10 @@ After demo, type `/reset-brewery` to delete topics and Flink jobs for next run.
 
 ## If Things Go Wrong
 
-| Problem | Recovery |
-|---------|----------|
-| MCP connection fails | `/mcp <url>` to reconnect manually |
-| Flink SQL error | Let the agent self-correct — this is actually a good demo moment |
-| Agent hallucinates tool | Say "That tool doesn't exist, use the available MCP tools" |
-| Slow response | Talk about prompt caching: "First turn is slower, subsequent turns are cached" |
-| Topics already exist | `/reset-brewery` then start over |
+| Problem                 | Recovery                                                                       |
+|-------------------------|--------------------------------------------------------------------------------|
+| MCP connection fails    | `/mcp <url>` to reconnect manually                                             |
+| Flink SQL error         | Let the agent self-correct — this is actually a good demo moment               |
+| Agent hallucinates tool | Say "That tool doesn't exist, use the available MCP tools"                     |
+| Slow response           | Talk about prompt caching: "First turn is slower, subsequent turns are cached" |
+| Topics already exist    | `/reset-brewery` then start over                                               |

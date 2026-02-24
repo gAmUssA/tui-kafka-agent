@@ -108,6 +108,13 @@ public final class Theme {
             .foreground(Color.color(GOLD))
             .bold(true);
 
+    public static final Style TOOL_COLLAPSED_ICON = Style.newStyle()
+            .foreground(Color.color(GOLD));
+
+    public static final Style TOOL_COLLAPSED_META = Style.newStyle()
+            .foreground(Color.color(DIM_GRAY))
+            .italic(true);
+
     public static final Style HELP_BOX = Style.newStyle()
             .border(Borders.roundedBorder())
             .borderForeground(Color.color(BLUE))
@@ -179,4 +186,20 @@ public final class Theme {
 
     public static final Style TOOL_BOX_BORDER = Style.newStyle()
             .foreground(Color.color(GOLD));
+
+    // ── Command suggestion popup styles ──────────────────────────────────
+
+    public static final Style SUGGESTION_SELECTED = Style.newStyle()
+            .foreground(Color.color(BRIGHT))
+            .background(Color.color(SEP_GRAY))
+            .bold(true);
+
+    public static final Style SUGGESTION_NORMAL = Style.newStyle()
+            .foreground(Color.color(WHITE));
+
+    public static final Style SUGGESTION_DIM = Style.newStyle()
+            .foreground(Color.color(DIM_GRAY));
+
+    public static final Style SUGGESTION_BORDER = Style.newStyle()
+            .foreground(Color.color(SEP_GRAY));
 }

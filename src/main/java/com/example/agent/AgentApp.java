@@ -37,7 +37,7 @@ public class AgentApp {
 
         // Build TUI
         AgentModel model = new AgentModel();
-        Program program = new Program(model).withAltScreen();
+        Program program = new Program(model).withAltScreen().withMouseCellMotion();
 
         // Wire the stream bridge, config, and pre-connected MCP bridge
         StreamBridge bridge = new StreamBridge(program, assistant);

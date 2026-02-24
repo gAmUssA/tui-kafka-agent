@@ -31,9 +31,10 @@ public class AgentModel implements Model {
   private final Textarea textarea;
   private final Viewport viewport;
   private final List<ChatEntry> chatHistory = new ArrayList<>();
+  private final List<ChatEntry> pendingToolResults = new ArrayList<>();
   private Spinner spinner;
-  private int width = 80;
-  private int height = 24;
+  private int width = 120;
+  private int height = 32;
 
   private StreamBridge streamBridge;
   private AppConfig appConfig;
@@ -44,14 +45,20 @@ public class AgentModel implements Model {
   private StringBuilder currentResponse;
   private String activeModel;
   private boolean thinkingEnabled;
+  private boolean toolOutputExpanded;
 
-  private static final int INPUT_HEIGHT = 1;
+  // Suggestion popup state
+  private boolean showSuggestions;
+  private List<CommandRegistry.CommandInfo> filteredSuggestions = List.of();
+  private int selectedSuggestion;
+
+  private static final int INPUT_HEIGHT = 3;
   private static final int HEADER_HEIGHT = 2;
 
   public AgentModel() {
     textarea = new Textarea();
     textarea.setPlaceholder("Type a message... (/ for commands)");
-    textarea.setWidth(78);
+    textarea.setWidth(118);
     textarea.setHeight(INPUT_HEIGHT);
     textarea.setShowLineNumbers(false);
     textarea.setCharLimit(0);
@@ -59,7 +66,7 @@ public class AgentModel implements Model {
 
     spinner = new Spinner(SpinnerType.DOT);
 
-    viewport = Viewport.create(78, 18);
+    viewport = Viewport.create(118, 24);
   }
 
   public void setStreamBridge(StreamBridge streamBridge) {
@@ -80,7 +87,7 @@ public class AgentModel implements Model {
     // Deferred to init() — Style.render() requires terminal to be initialized
     textarea.setPrompt(Theme.INPUT_PROMPT.render("\u276F "));
     String name = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-    viewport.setContent(renderWelcome(name, 78));
+    viewport.setContent(renderWelcome(name, 118));
     return textarea.init();
   }
 
@@ -94,11 +101,11 @@ public class AgentModel implements Model {
       return UpdateResult.from(this, spinner.init());
     }
 
-    // Handle tool completion
+    // Handle tool completion — buffer results until stream completes
     if (msg instanceof ToolCompleteMessage(String toolName, String result1)) {
       isToolExecuting = false;
-      chatHistory.add(ChatEntry.tool(toolName, result1));
       currentToolName = null;
+      pendingToolResults.add(ChatEntry.tool(toolName, result1));
       refreshViewport();
       return UpdateResult.from(this);
     }
@@ -119,6 +126,9 @@ public class AgentModel implements Model {
       if (!response.isBlank()) {
         chatHistory.add(ChatEntry.agent(response));
       }
+      // Flush buffered tool results AFTER the agent response
+      chatHistory.addAll(pendingToolResults);
+      pendingToolResults.clear();
       currentResponse = null;
       textarea.focus();
       refreshViewport();
@@ -131,6 +141,9 @@ public class AgentModel implements Model {
       isToolExecuting = false;
       currentToolName = null;
       currentResponse = null;
+      // Flush any buffered tool results so they're not lost
+      chatHistory.addAll(pendingToolResults);
+      pendingToolResults.clear();
       chatHistory.add(ChatEntry.error(error));
       textarea.focus();
       refreshViewport();
@@ -141,6 +154,46 @@ public class AgentModel implements Model {
       // Quit on Ctrl+C
       if ("ctrl+c".equals(keyMsg.key())) {
         return UpdateResult.from(this, QuitMessage::new);
+      }
+
+      // Toggle tool output collapsed/expanded
+      if ("ctrl+o".equals(keyMsg.key())) {
+        toolOutputExpanded = !toolOutputExpanded;
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+
+      // --- Suggestion popup key interception (before textarea) ---
+      if (showSuggestions && !filteredSuggestions.isEmpty()) {
+        switch (keyMsg.key()) {
+          case "tab" -> {
+            // Accept selected suggestion → fill textarea
+            var selected = filteredSuggestions.get(selectedSuggestion);
+            String completion = "/" + selected.name() + (selected.hasArgs() ? " " : "");
+            textarea.setValue(completion);
+            dismissSuggestions();
+            return UpdateResult.from(this);
+          }
+          case "up" -> {
+            selectedSuggestion = Math.max(0, selectedSuggestion - 1);
+            return UpdateResult.from(this);
+          }
+          case "down" -> {
+            selectedSuggestion = Math.min(filteredSuggestions.size() - 1, selectedSuggestion + 1);
+            return UpdateResult.from(this);
+          }
+          case "esc" -> {
+            dismissSuggestions();
+            return UpdateResult.from(this);
+          }
+          case "enter" -> {
+            // Dismiss suggestions, then fall through to submit
+            dismissSuggestions();
+          }
+          default -> {
+            // Other keys: fall through to normal handling (textarea gets them)
+          }
+        }
       }
 
       // Enter to submit message (intercept before textarea gets it)
@@ -196,6 +249,10 @@ public class AgentModel implements Model {
 
     // Delegate all other input to textarea
     UpdateResult<? extends Model> result = textarea.update(msg);
+
+    // Update suggestion state after textarea processes the key
+    updateSuggestions();
+
     return UpdateResult.from(this, result.command());
   }
 
@@ -207,10 +264,15 @@ public class AgentModel implements Model {
     String header = HeaderView.render(appName, activeModel, toolCount, isStreaming, isToolExecuting, width);
     String separator = Theme.SEPARATOR.render("─".repeat(Math.max(1, width)));
 
+    String suggestionPopup = (showSuggestions && !filteredSuggestions.isEmpty())
+        ? CommandSuggestionView.render(filteredSuggestions, selectedSuggestion, width) + "\n"
+        : "";
+
     return header + "\n"
            + separator + "\n"
            + viewport.view() + "\n"
            + separator + "\n"
+           + suggestionPopup
            + textarea.view();
   }
 
@@ -231,16 +293,16 @@ public class AgentModel implements Model {
   }
 
   private void handleHelp() {
-    String helpContent = """
-        /help              Show this help message
-        /clear             Clear chat history
-        /tools             List available tools
-        /model <name>      Switch model (sonnet, haiku, opus)
-        /thinking          Toggle extended thinking mode
-        /mcp <url>         Connect to MCP server
-        /topics            List Kafka topics (via AI)
-        /sql <query>       Run Flink SQL (via AI)
-        /reset-brewery     Reset demo (delete brewery topics & Flink jobs)""";
+    // Build help content from CommandRegistry (single source of truth)
+    int maxCmdLen = CommandRegistry.ALL.stream()
+        .mapToInt(c -> c.displayName().length())
+        .max().orElse(10);
+    var helpSb = new StringBuilder();
+    for (var cmd : CommandRegistry.ALL) {
+      helpSb.append(String.format("    %-" + (maxCmdLen + 4) + "s %s\n", cmd.displayName(), cmd.description()));
+    }
+    // Remove trailing newline
+    String helpContent = helpSb.toString().stripTrailing();
     String helpBox = Theme.HELP_BOX.margin(0, 0, 0, 2).render(
         Theme.WELCOME_TITLE.render("Commands") + "\n\n" + helpContent);
     chatHistory.add(ChatEntry.prerendered(helpBox));
@@ -366,12 +428,53 @@ public class AgentModel implements Model {
     streamBridge.sendMessage(
         "Delete all brewery-* topics (brewery-sensors, brewery-alerts, brewery-metrics) "
         + "and delete any running Flink statements related to the brewery pipeline. "
-        + "Also remove any brewery-pipeline tags. Confirm what was deleted.");
+        + "Also remove any brewery-pipeline tags. "
+        + "Also delete any Avro schemas (subjects) associated with the brewery topics "
+        + "(e.g. brewery-sensors-value, brewery-alerts-value, brewery-metrics-value). "
+        + "Confirm what was deleted.");
+  }
+
+  /**
+   * Update suggestion popup state based on current textarea value.
+   * Activates when text starts with '/' and has no space (still typing command name).
+   */
+  private void updateSuggestions() {
+    String val = textarea.value();
+    if (val.startsWith("/") && !val.contains(" ")) {
+      String prefix = val.substring(1); // text after '/'
+      filteredSuggestions = CommandRegistry.filter(prefix);
+      showSuggestions = !filteredSuggestions.isEmpty();
+      // Clamp selection to valid range
+      selectedSuggestion = Math.min(selectedSuggestion, Math.max(0, filteredSuggestions.size() - 1));
+    } else {
+      dismissSuggestions();
+    }
+  }
+
+  private void dismissSuggestions() {
+    showSuggestions = false;
+    filteredSuggestions = List.of();
+    selectedSuggestion = 0;
   }
 
   private void refreshViewport() {
     var sb = new StringBuilder();
-    sb.append(ChatView.render(chatHistory, width));
+    sb.append(ChatView.render(chatHistory, width, toolOutputExpanded));
+
+    // Show pending tool results (buffered, will be committed to history on stream complete)
+    for (ChatEntry toolEntry : pendingToolResults) {
+      if (toolEntry.toolName() != null) {
+        if (toolOutputExpanded) {
+          sb.append(ToolResultView.render(toolEntry.toolName(), toolEntry.content(), width - 4));
+        } else {
+          sb.append(ToolResultView.renderCollapsed(toolEntry.toolName(), toolEntry.content(), width - 4));
+        }
+      } else {
+        sb.append("  ").append(Theme.TOOL_BADGE.render("System"));
+        sb.append("  ").append(Theme.TOOL.render(toolEntry.content()));
+      }
+      sb.append("\n\n");
+    }
 
     // Show spinner during tool execution
     if (isToolExecuting && currentToolName != null) {
@@ -381,10 +484,16 @@ public class AgentModel implements Model {
     }
     // Show partial response while streaming
     if (isStreaming && currentResponse != null && !currentResponse.isEmpty()) {
-      sb.append("  ").append(Theme.AGENT_BADGE.render("Agent"))
-          .append("  ").append(Theme.AGENT.render(currentResponse.toString()))
-          .append(Theme.CURSOR.render("\u258C"))
-          .append("\n\n");
+      sb.append("  ").append(Theme.AGENT_BADGE.render("Agent")).append("\n");
+      String[] lines = currentResponse.toString().split("\n", -1);
+      for (int i = 0; i < lines.length; i++) {
+        sb.append("  ").append(Theme.AGENT.render(lines[i]));
+        if (i == lines.length - 1) {
+          sb.append(Theme.CURSOR.render("\u258C"));
+        }
+        sb.append("\n");
+      }
+      sb.append("\n");
     }
     viewport.setContent(sb.toString());
     viewport.gotoBottom();
@@ -395,9 +504,10 @@ public class AgentModel implements Model {
     String subtitle = Theme.WELCOME_TEXT.render("AI-powered Kafka & Flink assistant");
     String hint1 = Theme.WELCOME_TEXT.render("Type a message to begin");
     String hint2 = Theme.WELCOME_TEXT.render("/help for available commands");
+    String hint3 = Theme.WELCOME_TEXT.render("Ctrl+O to show/hide tool output");
 
-    String content = title + "\n\n" + subtitle + "\n\n" + hint1 + "\n" + hint2;
-    int boxWidth = Math.min(width - 4, 50);
+    String content = title + "\n\n" + subtitle + "\n\n" + hint1 + "\n" + hint2 + "\n" + hint3;
+    int boxWidth = Math.min(width - 4, 72);
     return Theme.WELCOME_BOX.width(boxWidth).margin(1, 0, 1, 2).render(content);
   }
 }
