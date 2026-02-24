@@ -1,3 +1,13 @@
+## App branding & profile (optional)
+# app:
+#   name: "kafka-agent"
+#   system-prompt: |
+#     You are kafka-agent, a terminal-based AI assistant for Apache Kafka and Flink.
+
+## Auto-connect to MCP server on startup (optional)
+# mcp:
+#   auto-connect-url: http://localhost:8080/sse
+
 anthropic:
   api-key: ${ANTHROPIC_API_KEY}
   model: claude-sonnet-4-20250514

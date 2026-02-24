@@ -55,9 +55,15 @@ tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
 
 // GraalVM native-image configuration (requires GraalVM JDK)
 graalvmNative {
+    toolchainDetection = true
     binaries {
         named("main") {
+            imageName = "kafka-agent"
             mainClass = "com.example.agent.AgentApp"
+            javaLauncher = javaToolchains.launcherFor {
+                languageVersion = JavaLanguageVersion.of(21)
+                vendor = JvmVendorSpec.matching("GraalVM Community")
+            }
             buildArgs.addAll(
                 "--no-fallback",
                 "--enable-native-access=ALL-UNNAMED",

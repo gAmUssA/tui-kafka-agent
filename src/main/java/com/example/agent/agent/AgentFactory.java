@@ -12,7 +12,7 @@ import dev.langchain4j.service.AiServices;
  */
 public final class AgentFactory {
 
-    private static final String SYSTEM_PROMPT = """
+    private static final String DEFAULT_SYSTEM_PROMPT = """
             You are kafka-agent, a terminal-based AI assistant specialized in Apache Kafka \
             and Flink on Confluent Cloud.
 
@@ -52,7 +52,10 @@ public final class AgentFactory {
         var builder = AiServices.builder(AgentAssistant.class)
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(50))
-                .systemMessageProvider(memoryId -> SYSTEM_PROMPT);
+                .systemMessageProvider(memoryId -> {
+                    String custom = config.getSystemPrompt();
+                    return custom != null ? custom : DEFAULT_SYSTEM_PROMPT;
+                });
 
         if (toolProvider != null) {
             builder.toolProvider(toolProvider);

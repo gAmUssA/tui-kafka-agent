@@ -1,7 +1,9 @@
 package com.example.agent.tui;
 
+import com.williamcallahan.tui4j.compat.lipgloss.Style;
+
 /**
- * Renders a tool result as a bordered box with tool name header.
+ * Renders a tool result as a lipgloss-bordered box with a styled tool name header.
  */
 public final class ToolResultView {
 
@@ -9,28 +11,24 @@ public final class ToolResultView {
     }
 
     public static String render(String toolName, String result, int width) {
-        int innerWidth = Math.max(10, width - 4);
-        String header = " " + toolName + "() ";
-        String topBorder = "┌" + header + "─".repeat(Math.max(0, innerWidth - header.length())) + "┐";
-        String bottomBorder = "└" + "─".repeat(innerWidth) + "┘";
+        int boxWidth = Math.max(20, Math.min(width, 80));
 
-        var sb = new StringBuilder();
-        sb.append(topBorder).append("\n");
+        // Build content: header line + severity-styled result
+        String header = Theme.TOOL_BOX_HEADER.render(toolName + "()");
+        String content = header + "\n" + styleSeverity(result);
 
-        String[] lines = result.split("\n", -1);
-        for (String line : lines) {
-            if (line.length() > innerWidth) {
-                line = line.substring(0, innerWidth - 1) + "…";
-            }
-            sb.append("│ ").append(line);
-            int padding = innerWidth - line.length() - 1;
-            if (padding > 0) {
-                sb.append(" ".repeat(padding));
-            }
-            sb.append("│\n");
-        }
+        // Apply the themed box style with constrained width
+        Style box = Theme.TOOL_BOX.width(boxWidth);
+        return "  " + box.render(content);
+    }
 
-        sb.append(bottomBorder);
-        return sb.toString();
+    /**
+     * Highlights severity keywords (CRITICAL, WARNING, INFO) with appropriate colors.
+     */
+    static String styleSeverity(String text) {
+        text = text.replace("CRITICAL", Theme.SEVERITY_CRITICAL.render("CRITICAL"));
+        text = text.replace("WARNING", Theme.SEVERITY_WARNING.render("WARNING"));
+        text = text.replace("INFO", Theme.SEVERITY_INFO.render("INFO"));
+        return text;
     }
 }

@@ -1,40 +1,82 @@
 package com.example.agent.tui;
 
 /**
- * Renders the header bar showing app name, model, MCP status, and state.
+ * Renders a professional status bar filling the full terminal width.
+ * Tracks plain-text length separately from styled output to calculate
+ * exact padding, avoiding ANSI-nesting width miscalculations.
  */
 public final class HeaderView {
 
-    private HeaderView() {
+  private HeaderView() {
+  }
+
+  public static String render(String appNameText, String model, int toolCount,
+                              boolean isStreaming, boolean isToolExecuting, int width) {
+    var styled = new StringBuilder();
+    int visibleLen = 0;
+
+    // App name — HEADER style has padding(0,1) = +2 visible chars
+    styled.append(Theme.HEADER.render(appNameText));
+    visibleLen += appNameText.length() + 2;
+
+    // Separator + model — HEADER_DIM has padding(0,1) = +2 visible chars
+    String sepModel = " \u2502 " + shortenModel(model);
+    styled.append(Theme.HEADER_DIM.render(sepModel));
+    visibleLen += sepModel.length() + 2;
+
+    // Tool count — HEADER_DIM has padding(0,1) = +2 visible chars
+    if (toolCount > 0) {
+      String toolText = " \u2502 MCP: " + toolCount + " tools";
+      styled.append(Theme.HEADER_DIM.render(toolText));
+      visibleLen += toolText.length() + 2;
     }
 
-    public static String render(String model, int toolCount, boolean isStreaming,
-                                boolean isToolExecuting, int width) {
-        var sb = new StringBuilder();
-        sb.append(Theme.HEADER.render(" kafka-agent "));
-        sb.append(Theme.HEADER_DIM.render(" " + shortenModel(model) + " "));
+    // Status indicator
+    if (isToolExecuting) {
+      String sep = " \u2502 ";
+      styled.append(Theme.HEADER_DIM.render(sep));
+      visibleLen += sep.length() + 2; // HEADER_DIM padding
 
-        if (toolCount > 0) {
-            sb.append(Theme.HEADER_DIM.render(" MCP: " + toolCount + " tools "));
-        }
+      // statusActive() renders a dot; HEADER_STATUS has padding(0,1)
+      String statusContent = Theme.statusActive() + " calling tool...";
+      styled.append(Theme.HEADER_STATUS.render(statusContent));
+      visibleLen += 1 + " calling tool...".length() + 2; // dot + text + padding
+    } else if (isStreaming) {
+      String sep = " \u2502 ";
+      styled.append(Theme.HEADER_DIM.render(sep));
+      visibleLen += sep.length() + 2;
 
-        if (isToolExecuting) {
-            sb.append(Theme.HEADER_DIM.render(" calling tool... "));
-        } else if (isStreaming) {
-            sb.append(Theme.HEADER_DIM.render(" streaming... "));
-        }
-
-        return sb.toString();
+      String statusContent = Theme.statusActive() + " streaming...";
+      styled.append(Theme.HEADER_STATUS.render(statusContent));
+      visibleLen += 1 + " streaming...".length() + 2;
     }
 
-    private static String shortenModel(String model) {
-        if (model == null) return "unknown";
-        if (model.contains("sonnet")) return "sonnet";
-        if (model.contains("haiku")) return "haiku";
-        if (model.contains("opus")) return "opus";
-        // Return last segment if it's a long model ID
-        int lastDash = model.lastIndexOf('-');
-        if (lastDash > 20) return model.substring(0, lastDash);
-        return model;
+    // Pad remaining width with background-colored spaces
+    int padding = Math.max(0, width - visibleLen);
+    if (padding > 0) {
+      styled.append(Theme.HEADER_FILL.render(" ".repeat(padding)));
     }
+
+    return styled.toString();
+  }
+
+  private static String shortenModel(String model) {
+      if (model == null) {
+          return "unknown";
+      }
+      if (model.contains("sonnet")) {
+          return "sonnet";
+      }
+      if (model.contains("haiku")) {
+          return "haiku";
+      }
+      if (model.contains("opus")) {
+          return "opus";
+      }
+    int lastDash = model.lastIndexOf('-');
+      if (lastDash > 20) {
+          return model.substring(0, lastDash);
+      }
+    return model;
+  }
 }

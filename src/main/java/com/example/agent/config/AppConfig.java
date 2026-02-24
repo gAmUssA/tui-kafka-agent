@@ -124,6 +124,31 @@ public final class AppConfig {
     }
 
     // ------------------------------------------------------------------
+    // Typed getters — App branding & profile
+    // ------------------------------------------------------------------
+
+    public String getAppName() {
+        return getStringValue("app.name", "kafka-agent");
+    }
+
+    /**
+     * Returns the custom system prompt from config, or {@code null} if not set
+     * (signaling the caller to use its built-in default).
+     */
+    public String getSystemPrompt() {
+        Object value = getNestedValue("app.system-prompt");
+        if (value == null) {
+            return null;
+        }
+        String str = value.toString();
+        return str.isBlank() ? null : str;
+    }
+
+    public String getMcpAutoConnectUrl() {
+        return getStringValue("mcp.auto-connect-url", "");
+    }
+
+    // ------------------------------------------------------------------
     // Internal — loading helpers
     // ------------------------------------------------------------------
 

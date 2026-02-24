@@ -35,5 +35,53 @@
     "name": "java.lang.Integer",
     "allDeclaredConstructors": true,
     "allPublicMethods": true
+  },
+  {
+    "name": "com.example.agent.agent.AgentAssistant",
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true,
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "dev.langchain4j.service.UserMessage",
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "dev.langchain4j.service.MemoryId",
+    "allDeclaredMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "dev.langchain4j.service.TokenStream",
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "dev.langchain4j.service.AiServices",
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "dev.langchain4j.service.DefaultAiServices",
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "dev.langchain4j.memory.chat.MessageWindowChatMemory",
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
+  },
+  {
+    "name": "dev.langchain4j.model.anthropic.AnthropicStreamingChatModel",
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true,
+    "allDeclaredFields": true
+  },
+  {
+    "name": "dev.langchain4j.model.anthropic.AnthropicStreamingChatModel$AnthropicStreamingChatModelBuilder",
+    "allDeclaredConstructors": true,
+    "allPublicMethods": true
   }
 ]

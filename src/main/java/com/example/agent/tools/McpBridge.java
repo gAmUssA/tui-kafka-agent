@@ -1,13 +1,13 @@
 package com.example.agent.tools;
 
+import java.util.List;
+
 import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
 import dev.langchain4j.service.tool.ToolProvider;
-
-import java.util.List;
 
 /**
  * Connects to an MCP server via HTTP SSE transport and provides
