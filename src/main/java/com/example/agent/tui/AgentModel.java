@@ -195,20 +195,12 @@ public class AgentModel implements Model {
 
     @Override
     public String view() {
-        String mcpStatus = (mcpBridge != null && mcpBridge.isConnected())
-                ? " | MCP: " + mcpBridge.getToolCount() + " tools"
-                : "";
-        String status;
-        if (isToolExecuting) {
-            status = "kafka-agent" + mcpStatus + " | calling tool...";
-        } else if (isStreaming) {
-            status = "kafka-agent" + mcpStatus + " | streaming...";
-        } else {
-            status = "kafka-agent" + mcpStatus + " | Ctrl+C to quit";
-        }
-        String separator = "─".repeat(Math.max(1, width));
+        int toolCount = (mcpBridge != null && mcpBridge.isConnected())
+                ? mcpBridge.getToolCount() : 0;
+        String header = HeaderView.render(activeModel, toolCount, isStreaming, isToolExecuting, width);
+        String separator = Theme.SEPARATOR.render("─".repeat(Math.max(1, width)));
 
-        return status + "\n"
+        return header + "\n"
                + separator + "\n"
                + viewport.view() + "\n"
                + separator + "\n"
@@ -355,28 +347,19 @@ public class AgentModel implements Model {
 
     private void refreshViewport() {
         var sb = new StringBuilder();
-        for (ChatEntry entry : chatHistory) {
-            switch (entry.role()) {
-                case USER -> sb.append("  You: ").append(entry.content()).append("\n\n");
-                case AGENT -> sb.append("  Agent: ").append(entry.content()).append("\n\n");
-                case TOOL -> {
-                    if (entry.toolName() != null) {
-                        sb.append(ToolResultView.render(entry.toolName(), entry.content(), width - 4));
-                    } else {
-                        sb.append("  ").append(entry.content());
-                    }
-                    sb.append("\n\n");
-                }
-                case ERROR -> sb.append("  Error: ").append(entry.content()).append("\n\n");
-            }
-        }
+        sb.append(ChatView.render(chatHistory, width));
+
         // Show spinner during tool execution
         if (isToolExecuting && currentToolName != null) {
-            sb.append("  ").append(spinner.view()).append(" Calling ").append(currentToolName).append("()...\n\n");
+            sb.append("  ").append(spinner.view())
+              .append(Theme.TOOL.render(" Calling " + currentToolName + "()..."))
+              .append("\n\n");
         }
         // Show partial response while streaming
         if (isStreaming && currentResponse != null && !currentResponse.isEmpty()) {
-            sb.append("  Agent: ").append(currentResponse).append("▌\n\n");
+            sb.append("  ").append(Theme.AGENT_LABEL.render("Agent: "))
+              .append(Theme.AGENT.render(currentResponse.toString()))
+              .append("▌\n\n");
         }
         viewport.setContent(sb.toString());
         viewport.gotoBottom();
