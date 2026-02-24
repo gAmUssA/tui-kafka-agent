@@ -1,12 +1,14 @@
 package com.example.agent.agent;
 
 import com.example.agent.config.AppConfig;
+import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.service.AiServices;
 
 /**
  * Wires the AiServices builder with the streaming model and chat memory.
+ * Supports rebuilding with additional tool providers (e.g., from MCP).
  */
 public final class AgentFactory {
 
@@ -20,11 +22,8 @@ public final class AgentFactory {
             - Assist with Confluent Cloud configuration and troubleshooting
             - Guide users through common Kafka operations
 
-            When tools become available, you will be able to:
-            - List and describe Kafka topics
-            - Produce test messages
-            - Check consumer group lag
-            - Submit and monitor Flink SQL statements
+            You have tools available via MCP servers that the user can connect. \
+            Use them when the user asks about their Kafka topics, Flink jobs, or cluster state.
 
             Keep responses concise and terminal-friendly. Use short paragraphs. \
             When showing code or configs, use plain text (no markdown fences — this is a terminal). \
@@ -34,12 +33,31 @@ public final class AgentFactory {
     }
 
     public static AgentAssistant create(AppConfig config) {
-        AnthropicStreamingChatModel model = AnthropicConfig.createStreamingModel(config);
+        return create(config, null, null, false);
+    }
 
-        return AiServices.builder(AgentAssistant.class)
+    public static AgentAssistant create(AppConfig config, ToolProvider toolProvider) {
+        return create(config, toolProvider, null, false);
+    }
+
+    public static AgentAssistant create(AppConfig config, ToolProvider toolProvider, String modelOverride) {
+        return create(config, toolProvider, modelOverride, false);
+    }
+
+    public static AgentAssistant create(
+            AppConfig config, ToolProvider toolProvider, String modelOverride, boolean thinkingEnabled) {
+        AnthropicStreamingChatModel model =
+                AnthropicConfig.createStreamingModel(config, modelOverride, thinkingEnabled);
+
+        var builder = AiServices.builder(AgentAssistant.class)
                 .streamingChatModel(model)
                 .chatMemory(MessageWindowChatMemory.withMaxMessages(50))
-                .systemMessageProvider(memoryId -> SYSTEM_PROMPT)
-                .build();
+                .systemMessageProvider(memoryId -> SYSTEM_PROMPT);
+
+        if (toolProvider != null) {
+            builder.toolProvider(toolProvider);
+        }
+
+        return builder.build();
     }
 }

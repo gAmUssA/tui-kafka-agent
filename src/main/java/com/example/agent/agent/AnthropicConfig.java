@@ -8,16 +8,36 @@ import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
  */
 public final class AnthropicConfig {
 
+    private static final int THINKING_BUDGET_TOKENS = 10000;
+
     private AnthropicConfig() {
     }
 
     public static AnthropicStreamingChatModel createStreamingModel(AppConfig config) {
-        return AnthropicStreamingChatModel.builder()
+        return createStreamingModel(config, null, false);
+    }
+
+    public static AnthropicStreamingChatModel createStreamingModel(AppConfig config, String modelOverride) {
+        return createStreamingModel(config, modelOverride, false);
+    }
+
+    public static AnthropicStreamingChatModel createStreamingModel(
+            AppConfig config, String modelOverride, boolean thinkingEnabled) {
+        String modelName = modelOverride != null ? modelOverride : config.getAnthropicModel();
+        var builder = AnthropicStreamingChatModel.builder()
                 .apiKey(config.getAnthropicApiKey())
-                .modelName(config.getAnthropicModel())
-                .maxTokens(config.getAnthropicMaxTokens())
+                .modelName(modelName)
                 .cacheSystemMessages(config.isCacheSystemMessages())
-                .cacheTools(config.isCacheTools())
-                .build();
+                .cacheTools(config.isCacheTools());
+
+        if (thinkingEnabled) {
+            builder.thinkingType("enabled")
+                   .thinkingBudgetTokens(THINKING_BUDGET_TOKENS)
+                   .maxTokens(config.getAnthropicMaxTokens() + THINKING_BUDGET_TOKENS);
+        } else {
+            builder.maxTokens(config.getAnthropicMaxTokens());
+        }
+
+        return builder.build();
     }
 }

@@ -20,9 +20,10 @@ public class AgentApp {
         AgentModel model = new AgentModel();
         Program program = new Program(model).withAltScreen();
 
-        // Wire the stream bridge (needs both Program and Assistant)
+        // Wire the stream bridge and config (needed for MCP rebuild)
         StreamBridge bridge = new StreamBridge(program, assistant);
         model.setStreamBridge(bridge);
+        model.setAppConfig(config);
 
         program.run();
     }

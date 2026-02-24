@@ -24,9 +24,10 @@ dependencies {
     // JLine FFM terminal provider for Java 21+ (macOS native terminal access)
     implementation("org.jline:jline-terminal-ffm:3.26.1")
 
-    // LangChain4j core + Anthropic
-    implementation("dev.langchain4j:langchain4j:1.9.1")
-    implementation("dev.langchain4j:langchain4j-anthropic:1.9.1")
+    // LangChain4j core + Anthropic + MCP
+    implementation("dev.langchain4j:langchain4j:1.11.0")
+    implementation("dev.langchain4j:langchain4j-anthropic:1.11.0")
+    implementation("dev.langchain4j:langchain4j-mcp:1.11.0-beta19")
 
     // Configuration
     implementation("org.yaml:snakeyaml:2.2")
