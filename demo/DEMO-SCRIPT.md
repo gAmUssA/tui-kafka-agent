@@ -9,7 +9,7 @@
 - [ ] `MCP_SERVER_URL` env var set (e.g., `https://mcp-confluent.ai-assisted.engineering/sse`)
 - [ ] `~/.config/kafka-agent/config.yaml` copied from `docs/brewmaster-config.yaml`
 - [ ] Terminal at least 120 chars wide, dark background
-- [ ] Run `/reset-brewery` if topics exist from a previous run
+- [ ] Run `/reset` if topics exist from a previous run
 - [ ] Verify no stale schemas: run `list-schemas` — `brewery-sensors-value` should not exist
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent" in header with tool count
 
@@ -17,7 +17,7 @@
 
 ## Act 1 — "Set Up the Brewery" (~1 min)
 
-**Type:**
+**Type** (or use `/setup`):
 > I'm building a smart brewery monitoring system. Create three topics — brewery-sensors, brewery-alerts, and brewery-metrics. Then tag them all with a brewery-pipeline tag.
 
 **What happens**: Agent calls `create-topics`, `create-topic-tags`, `add-tags-to-topic`. Explains the pipeline.
@@ -89,7 +89,7 @@
 
 ## Cleanup
 
-After demo, type `/reset-brewery` to delete topics and Flink jobs for next run.
+After demo, type `/reset` to delete topics and Flink jobs for next run.
 
 ---
 
@@ -101,4 +101,4 @@ After demo, type `/reset-brewery` to delete topics and Flink jobs for next run.
 | Flink SQL error         | Let the agent self-correct — this is actually a good demo moment               |
 | Agent hallucinates tool | Say "That tool doesn't exist, use the available MCP tools"                     |
 | Slow response           | Talk about prompt caching: "First turn is slower, subsequent turns are cached" |
-| Topics already exist    | `/reset-brewery` then start over                                               |
+| Topics already exist    | `/reset` then start over                                               |

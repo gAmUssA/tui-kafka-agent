@@ -38,6 +38,19 @@ app:
     Keep responses concise and terminal-friendly. Use short paragraphs.
     When showing code or configs, use plain text (no markdown fences — this is a terminal).
 
+demo:
+  setup: |
+    I'm building a smart brewery monitoring system. Create three topics —
+    brewery-sensors, brewery-alerts, and brewery-metrics.
+    Then tag them all with a brewery-pipeline tag.
+  reset: |
+    Delete all brewery-* topics (brewery-sensors, brewery-alerts, brewery-metrics)
+    and delete any running Flink statements related to the brewery pipeline.
+    Also remove any brewery-pipeline tags.
+    Also delete any Avro schemas (subjects) associated with the brewery topics
+    (e.g. brewery-sensors-value, brewery-alerts-value, brewery-metrics-value).
+    Confirm what was deleted.
+
 mcp:
   auto-connect-url: ${MCP_SERVER_URL}
 

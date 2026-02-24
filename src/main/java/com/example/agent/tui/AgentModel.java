@@ -286,7 +286,10 @@ public class AgentModel implements Model {
       case "mcp" -> handleMcpConnect(cmd.args().isEmpty() ? "" : cmd.args().getFirst());
       case "topics" -> handleTopicsShortcut();
       case "sql" -> handleSqlShortcut(cmd.args());
-      case "reset-brewery" -> handleResetBrewery();
+      case "setup" -> handleDemoCommand(
+          appConfig != null ? appConfig.getDemoSetupPrompt() : null, "setup");
+      case "reset" -> handleDemoCommand(
+          appConfig != null ? appConfig.getDemoResetPrompt() : null, "reset");
       default -> chatHistory.add(ChatEntry.error(
           "Unknown command: /" + cmd.name() + ". Type /help for available commands."));
     }
@@ -417,7 +420,13 @@ public class AgentModel implements Model {
     streamBridge.sendMessage("Execute this Flink SQL query: " + query);
   }
 
-  private void handleResetBrewery() {
+  private void handleDemoCommand(String prompt, String commandName) {
+    if (prompt == null) {
+      chatHistory.add(ChatEntry.error(
+          "/" + commandName + " is not configured. Add demo." + commandName
+          + " to your config YAML."));
+      return;
+    }
     if (mcpBridge == null || !mcpBridge.isConnected()) {
       chatHistory.add(ChatEntry.error("No MCP server connected. Use /mcp <url> first."));
       return;
@@ -425,13 +434,7 @@ public class AgentModel implements Model {
     textarea.blur();
     isStreaming = true;
     currentResponse = new StringBuilder();
-    streamBridge.sendMessage(
-        "Delete all brewery-* topics (brewery-sensors, brewery-alerts, brewery-metrics) "
-        + "and delete any running Flink statements related to the brewery pipeline. "
-        + "Also remove any brewery-pipeline tags. "
-        + "Also delete any Avro schemas (subjects) associated with the brewery topics "
-        + "(e.g. brewery-sensors-value, brewery-alerts-value, brewery-metrics-value). "
-        + "Confirm what was deleted.");
+    streamBridge.sendMessage(prompt);
   }
 
   /**

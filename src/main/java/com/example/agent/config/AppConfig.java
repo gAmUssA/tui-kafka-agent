@@ -149,6 +149,24 @@ public final class AppConfig {
     }
 
     // ------------------------------------------------------------------
+    // Typed getters — Demo commands
+    // ------------------------------------------------------------------
+
+    public String getDemoSetupPrompt() {
+        Object value = getNestedValue("demo.setup");
+        if (value == null) return null;
+        String str = value.toString();
+        return str.isBlank() ? null : str.strip();
+    }
+
+    public String getDemoResetPrompt() {
+        Object value = getNestedValue("demo.reset");
+        if (value == null) return null;
+        String str = value.toString();
+        return str.isBlank() ? null : str.strip();
+    }
+
+    // ------------------------------------------------------------------
     // Internal — loading helpers
     // ------------------------------------------------------------------
 

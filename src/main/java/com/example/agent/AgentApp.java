@@ -6,6 +6,7 @@ import com.example.agent.agent.StreamBridge;
 import com.example.agent.config.AppConfig;
 import com.example.agent.tools.McpBridge;
 import com.example.agent.tui.AgentModel;
+import com.example.agent.tui.CommandRegistry;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
 
 public class AgentApp {
@@ -13,6 +14,7 @@ public class AgentApp {
     public static void main(String[] args) {
         // Load config — validates API keys before entering TUI
         AppConfig config = AppConfig.load();
+        CommandRegistry.init(config);
 
         // Auto-connect to MCP server if configured
         McpBridge mcpBridge = null;
