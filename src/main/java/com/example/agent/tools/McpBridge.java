@@ -86,4 +86,17 @@ public class McpBridge {
                 .map(tool -> tool.name())
                 .toList();
     }
+
+    public void close() {
+        if (mcpClient != null) {
+            try {
+                mcpClient.close();
+            } catch (Exception ignored) {
+            }
+            mcpClient = null;
+            toolProvider = null;
+            connectedUrl = null;
+            toolCount = 0;
+        }
+    }
 }

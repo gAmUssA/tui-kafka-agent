@@ -46,6 +46,7 @@ public class AgentModel implements Model {
   private String activeModel;
   private boolean thinkingEnabled;
   private boolean toolOutputExpanded;
+  private boolean quitRequested;
 
   // Suggestion popup state
   private boolean showSuggestions;
@@ -210,6 +211,9 @@ public class AgentModel implements Model {
           if (cmd.isPresent()) {
             chatHistory.add(ChatEntry.user(text));
             handleSlashCommand(cmd.get());
+            if (quitRequested) {
+              return UpdateResult.from(this, QuitMessage::new);
+            }
             refreshViewport();
             return UpdateResult.from(this);
           }
@@ -286,6 +290,7 @@ public class AgentModel implements Model {
       case "mcp" -> handleMcpConnect(cmd.args().isEmpty() ? "" : cmd.args().getFirst());
       case "topics" -> handleTopicsShortcut();
       case "sql" -> handleSqlShortcut(cmd.args());
+      case "quit" -> quitRequested = true;
       case "setup" -> handleDemoCommand(
           appConfig != null ? appConfig.getDemoSetupPrompt() : null, "setup");
       case "reset" -> handleDemoCommand(
@@ -500,6 +505,12 @@ public class AgentModel implements Model {
     }
     viewport.setContent(sb.toString());
     viewport.gotoBottom();
+  }
+
+  public void cleanup() {
+    if (mcpBridge != null) {
+      mcpBridge.close();
+    }
   }
 
   private static String renderWelcome(String appName, int width) {
