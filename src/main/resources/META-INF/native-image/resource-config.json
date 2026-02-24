@@ -3,7 +3,8 @@
     "includes": [
       {"pattern": ".*\\.yaml$"},
       {"pattern": ".*\\.yml$"},
-      {"pattern": "META-INF/services/.*"}
+      {"pattern": "META-INF/services/.*"},
+      {"pattern": "com/ibm/icu/impl/data/icudata/.*"}
     ]
   }
 }
