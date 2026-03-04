@@ -20,6 +20,7 @@ import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -264,8 +265,9 @@ public class AgentModel implements Model {
   public String view() {
     int toolCount = (mcpBridge != null && mcpBridge.isConnected())
                     ? mcpBridge.getToolCount() : 0;
+    int serverCount = (mcpBridge != null) ? mcpBridge.getConnectedServers().size() : 0;
     String appName = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-    String header = HeaderView.render(appName, activeModel, toolCount, isStreaming, isToolExecuting, width);
+    String header = HeaderView.render(appName, activeModel, toolCount, serverCount, isStreaming, isToolExecuting, width);
     String separator = Theme.SEPARATOR.render("─".repeat(Math.max(1, width)));
 
     String suggestionPopup = (showSuggestions && !filteredSuggestions.isEmpty())
@@ -287,7 +289,7 @@ public class AgentModel implements Model {
       case "tools" -> handleTools();
       case "model" -> handleModel(cmd.args());
       case "thinking" -> handleThinking();
-      case "mcp" -> handleMcpConnect(cmd.args().isEmpty() ? "" : cmd.args().getFirst());
+      case "mcp" -> handleMcp(cmd.args());
       case "topics" -> handleTopicsShortcut();
       case "sql" -> handleSqlShortcut(cmd.args());
       case "quit" -> quitRequested = true;
@@ -318,31 +320,29 @@ public class AgentModel implements Model {
 
   private void handleClear() {
     chatHistory.clear();
-    // Rebuild assistant to reset chat memory
-    if (appConfig != null) {
-      var toolProvider = (mcpBridge != null && mcpBridge.isConnected())
-                         ? mcpBridge.getToolProvider() : null;
-      AgentAssistant newAssistant = AgentFactory.create(appConfig, toolProvider, activeModel, thinkingEnabled);
-      streamBridge.setAssistant(newAssistant);
-    }
+    rebuildAssistant();
     chatHistory.add(ChatEntry.tool("Chat cleared."));
   }
 
   private void handleTools() {
     if (mcpBridge == null || !mcpBridge.isConnected()) {
-      chatHistory.add(ChatEntry.tool("No tools loaded. Use /mcp <url> to connect to an MCP server."));
+      chatHistory.add(ChatEntry.tool("No tools loaded. Use /mcp <name> <url> to connect to an MCP server."));
       return;
     }
-    var tools = mcpBridge.listToolNames();
-    if (tools.isEmpty()) {
-      chatHistory.add(ChatEntry.tool("Connected to MCP server but no tools available."));
-    } else {
-      var sb = new StringBuilder("Available tools (" + tools.size() + "):\n");
-      for (String tool : tools) {
-        sb.append("  - ").append(tool).append("\n");
-      }
-      chatHistory.add(ChatEntry.tool(sb.toString().stripTrailing()));
+    Map<String, List<String>> toolsByServer = mcpBridge.listToolNamesByServer();
+    if (toolsByServer.isEmpty()) {
+      chatHistory.add(ChatEntry.tool("Connected to MCP server(s) but no tools available."));
+      return;
     }
+    int total = toolsByServer.values().stream().mapToInt(List::size).sum();
+    var sb = new StringBuilder("Available tools (" + total + "):\n");
+    for (var entry : toolsByServer.entrySet()) {
+      sb.append("  [").append(entry.getKey()).append("]\n");
+      for (String tool : entry.getValue()) {
+        sb.append("    - ").append(tool).append("\n");
+      }
+    }
+    chatHistory.add(ChatEntry.tool(sb.toString().stripTrailing()));
   }
 
   private void handleModel(List<String> args) {
@@ -359,42 +359,75 @@ public class AgentModel implements Model {
       return;
     }
     activeModel = resolved;
-    if (appConfig != null) {
-      var toolProvider = (mcpBridge != null && mcpBridge.isConnected())
-                         ? mcpBridge.getToolProvider() : null;
-      AgentAssistant newAssistant = AgentFactory.create(appConfig, toolProvider, activeModel, thinkingEnabled);
-      streamBridge.setAssistant(newAssistant);
-    }
+    rebuildAssistant();
     chatHistory.add(ChatEntry.tool("Switched to model: " + resolved));
   }
 
   private void handleThinking() {
     thinkingEnabled = !thinkingEnabled;
-    if (appConfig != null) {
-      var toolProvider = (mcpBridge != null && mcpBridge.isConnected())
-                         ? mcpBridge.getToolProvider() : null;
-      AgentAssistant newAssistant = AgentFactory.create(appConfig, toolProvider, activeModel, thinkingEnabled);
-      streamBridge.setAssistant(newAssistant);
-    }
+    rebuildAssistant();
     chatHistory.add(ChatEntry.tool("Extended thinking: " + (thinkingEnabled ? "ON" : "OFF")));
   }
 
-  private void handleMcpConnect(String url) {
-    if (url.isEmpty()) {
-      chatHistory.add(ChatEntry.error("Usage: /mcp <url>"));
-      return;
-    }
+  private void handleMcp(List<String> args) {
     if (mcpBridge == null) {
       mcpBridge = new McpBridge();
     }
-    String result = mcpBridge.connect(url);
-    chatHistory.add(ChatEntry.tool(result));
 
-    // Rebuild assistant with MCP tools if connected
-    if (mcpBridge.isConnected() && appConfig != null) {
-      AgentAssistant newAssistant = AgentFactory.create(appConfig, mcpBridge.getToolProvider(), activeModel, thinkingEnabled);
-      streamBridge.setAssistant(newAssistant);
+    // /mcp (no args) → list connected servers
+    if (args.isEmpty()) {
+      var servers = mcpBridge.getConnectedServers();
+      if (servers.isEmpty()) {
+        chatHistory.add(ChatEntry.tool("No MCP servers connected.\nUsage: /mcp <name> <url> | /mcp disconnect [name]"));
+        return;
+      }
+      var sb = new StringBuilder("Connected MCP servers:\n");
+      for (var entry : servers.entrySet()) {
+        sb.append("  ").append(entry.getKey()).append(" — ").append(entry.getValue()).append(" tools\n");
+      }
+      chatHistory.add(ChatEntry.tool(sb.toString().stripTrailing()));
+      return;
     }
+
+    // /mcp disconnect [name]
+    if ("disconnect".equals(args.getFirst())) {
+      String result;
+      if (args.size() >= 2) {
+        result = mcpBridge.disconnect(args.get(1));
+      } else {
+        result = mcpBridge.disconnectAll();
+      }
+      chatHistory.add(ChatEntry.tool(result));
+      rebuildAssistant();
+      return;
+    }
+
+    // /mcp <name> <url> → connect SSE server
+    if (args.size() >= 2) {
+      String name = args.getFirst();
+      String url = args.get(1);
+      String result = mcpBridge.connectSse(name, url);
+      chatHistory.add(ChatEntry.tool(result));
+      rebuildAssistant();
+      return;
+    }
+
+    // /mcp <url> → single arg, treat as SSE with auto-name
+    String urlOrName = args.getFirst();
+    if (urlOrName.startsWith("http")) {
+      String result = mcpBridge.connectSse("default", urlOrName);
+      chatHistory.add(ChatEntry.tool(result));
+      rebuildAssistant();
+    } else {
+      chatHistory.add(ChatEntry.error("Usage: /mcp <name> <url> | /mcp disconnect [name]"));
+    }
+  }
+
+  private void rebuildAssistant() {
+    if (appConfig == null) return;
+    var tp = (mcpBridge != null && mcpBridge.isConnected()) ? mcpBridge.getToolProvider() : null;
+    AgentAssistant newAssistant = AgentFactory.create(appConfig, tp, activeModel, thinkingEnabled);
+    streamBridge.setAssistant(newAssistant);
   }
 
   private void handleTopicsShortcut() {

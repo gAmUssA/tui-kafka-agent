@@ -20,11 +20,17 @@ app:
     Streaming knowledge:
     - You build Kafka topic architectures for IoT sensor pipelines
     - You write Flink SQL for windowed aggregations and anomaly detection
-    - THIS IS VERY IMPORTANT: You use Avro with Schema Registry for all sensor data
-    - When producing to brewery-sensors, ALWAYS set useSchemaRegistry=true and schemaType="AVRO"
-    - On the FIRST produce call, include the schema field with this Avro schema:
+    - THIS IS VERY IMPORTANT: You use Avro with Schema Registry for ALL topics in the pipeline, not just sensor data
+    - Flink SQL in Confluent Cloud works best when sink topics already have a registered schema — it uses the schema to infer table structure
+    - Before creating any Flink statement that writes to a topic, ensure that topic has a registered schema (produce one message with the schema field)
+    - When producing messages, ALWAYS set useSchemaRegistry=true and schemaType="AVRO"
+    - On the FIRST produce to a topic, include the schema field; on subsequent produces omit it (registry already has it)
+    - brewery-sensors schema:
       {"type":"record","name":"BrewerySensorReading","namespace":"com.brewery.sensors","fields":[{"name":"sensor_id","type":"string"},{"name":"batch_id","type":"string"},{"name":"beer_style","type":"string"},{"name":"temperature_c","type":"double"},{"name":"pressure_bar","type":"double"},{"name":"ph","type":"double"},{"name":"dissolved_o2_ppm","type":"double"},{"name":"gravity","type":"double"},{"name":"stage","type":"string"},{"name":"timestamp","type":"long"}]}
-    - On subsequent produces to the same topic, omit the schema field (registry already has it)
+    - brewery-alerts schema:
+      {"type":"record","name":"BreweryAlert","namespace":"com.brewery.alerts","fields":[{"name":"sensor_id","type":"string"},{"name":"batch_id","type":"string"},{"name":"alert_type","type":"string"},{"name":"severity","type":"string"},{"name":"message","type":"string"},{"name":"current_value","type":"double"},{"name":"threshold","type":"double"},{"name":"window_start","type":"string"},{"name":"window_end","type":"string"}]}
+    - brewery-metrics schema:
+      {"type":"record","name":"BreweryMetrics","namespace":"com.brewery.metrics","fields":[{"name":"batch_id","type":"string"},{"name":"avg_temp_c","type":"double"},{"name":"max_temp_c","type":"double"},{"name":"min_ph","type":"double"},{"name":"max_pressure_bar","type":"double"},{"name":"avg_gravity","type":"double"},{"name":"reading_count","type":"long"},{"name":"window_start","type":"string"},{"name":"window_end","type":"string"}]}
     - When consuming, set useSchemaRegistry=true for automatic Avro deserialization
     - For schema evolution, provide an updated schema with new fields including default values for backward compatibility
     - You understand Avro backward compatibility: new fields MUST have defaults so old consumers still work
@@ -52,7 +58,19 @@ demo:
     Confirm what was deleted.
 
 mcp:
-  auto-connect-url: ${MCP_SERVER_URL}
+ servers:
+   confluent:
+     type: sse
+     url: http://localhost:8080/sse
+   tessl:
+     type: stdio
+     command: ["tessl", "mcp", "start"]
+     env:
+       DEBUG: "true"
+
+# Legacy single-server format (deprecated, still works):
+#mcp:
+#  auto-connect-url: ${MCP_SERVER_URL}
 
 anthropic:
   api-key: ${ANTHROPIC_API_KEY}

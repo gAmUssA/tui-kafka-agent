@@ -4,10 +4,13 @@ import com.example.agent.agent.AgentAssistant;
 import com.example.agent.agent.AgentFactory;
 import com.example.agent.agent.StreamBridge;
 import com.example.agent.config.AppConfig;
+import com.example.agent.config.McpServerConfig;
 import com.example.agent.tools.McpBridge;
 import com.example.agent.tui.AgentModel;
 import com.example.agent.tui.CommandRegistry;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
+
+import java.util.Map;
 
 public class AgentApp {
 
@@ -16,15 +19,20 @@ public class AgentApp {
         AppConfig config = AppConfig.load();
         CommandRegistry.init(config);
 
-        // Auto-connect to MCP server if configured
+        // Auto-connect to configured MCP servers
         McpBridge mcpBridge = null;
-        String mcpUrl = config.getMcpAutoConnectUrl();
-        if (!mcpUrl.isEmpty()) {
+        Map<String, McpServerConfig> mcpServers = config.getMcpServers();
+        if (!mcpServers.isEmpty()) {
             mcpBridge = new McpBridge();
-            String result = mcpBridge.connect(mcpUrl);
-            System.err.println("[mcp] " + result);
+            for (var entry : mcpServers.entrySet()) {
+                String name = entry.getKey();
+                McpServerConfig serverConfig = entry.getValue();
+                System.err.println("[mcp] Connecting to '" + name + "' (" + serverConfig.type() + ")...");
+                String result = mcpBridge.connect(name, serverConfig);
+                System.err.println("[mcp] " + result);
+            }
             if (!mcpBridge.isConnected()) {
-                System.err.println("[mcp] Auto-connect failed. You can retry with /mcp in the TUI.");
+                System.err.println("[mcp] No MCP servers connected. You can retry with /mcp in the TUI.");
                 mcpBridge = null;
             }
         }

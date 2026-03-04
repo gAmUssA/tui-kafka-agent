@@ -30,7 +30,7 @@ public final class CommandRegistry {
         new CommandInfo("tools", "", "List available tools"),
         new CommandInfo("model", "<name>", "Switch model (sonnet, haiku, opus)"),
         new CommandInfo("thinking", "", "Toggle extended thinking mode"),
-        new CommandInfo("mcp", "<url>", "Connect to MCP server"),
+        new CommandInfo("mcp", "[name] <url> | disconnect [name]", "Manage MCP servers"),
         new CommandInfo("topics", "", "List Kafka topics (via AI)"),
         new CommandInfo("sql", "<query>", "Run Flink SQL (via AI)"),
         new CommandInfo("quit", "", "Exit the application")

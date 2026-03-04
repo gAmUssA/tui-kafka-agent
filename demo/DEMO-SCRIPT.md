@@ -40,7 +40,7 @@
 ## Act 3 — "Watch the Brewery" (~1.5 min)
 
 **Type:**
-> Create a Flink SQL job that monitors for temperature anomalies — alert if any fermenter drifts more than 2 degrees from its style's normal range in a 30-second window.
+> Create a Flink SQL job that monitors for temperature anomalies — alert if any fermenter drifts more than 2 degrees from its style's normal range in a 10-second window.
 
 **What happens**: Agent writes Flink SQL with CASE logic for style-specific thresholds, submits it, verifies it's running.
 
@@ -101,4 +101,4 @@ After demo, type `/reset` to delete topics and Flink jobs for next run.
 | Flink SQL error         | Let the agent self-correct — this is actually a good demo moment               |
 | Agent hallucinates tool | Say "That tool doesn't exist, use the available MCP tools"                     |
 | Slow response           | Talk about prompt caching: "First turn is slower, subsequent turns are cached" |
-| Topics already exist    | `/reset` then start over                                               |
+| Topics already exist    | `/reset` then start over                                                       |

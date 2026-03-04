@@ -4,7 +4,21 @@
 #   system-prompt: |
 #     You are kafka-agent, a terminal-based AI assistant for Apache Kafka and Flink.
 
-## Auto-connect to MCP server on startup (optional)
+## Auto-connect to MCP servers on startup (optional)
+## Each entry under 'servers' is a named MCP server connection.
+## Supported types: sse (HTTP SSE), stdio (subprocess)
+# mcp:
+#   servers:
+#     confluent:
+#       type: sse
+#       url: http://localhost:8080/sse
+#     filesystem:
+#       type: stdio
+#       command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+#       env:
+#         DEBUG: "true"
+#
+## Legacy single-server format (deprecated, still works):
 # mcp:
 #   auto-connect-url: http://localhost:8080/sse
 

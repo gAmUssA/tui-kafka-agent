@@ -10,7 +10,7 @@ public final class HeaderView {
   private HeaderView() {
   }
 
-  public static String render(String appNameText, String model, int toolCount,
+  public static String render(String appNameText, String model, int toolCount, int serverCount,
                               boolean isStreaming, boolean isToolExecuting, int width) {
     var styled = new StringBuilder();
     int visibleLen = 0;
@@ -26,7 +26,8 @@ public final class HeaderView {
 
     // Tool count — HEADER_DIM has padding(0,1) = +2 visible chars
     if (toolCount > 0) {
-      String toolText = " \u2502 MCP: " + toolCount + " tools";
+      String toolText = " \u2502 MCP: " + toolCount + " tools"
+              + (serverCount > 1 ? " (" + serverCount + " servers)" : "");
       styled.append(Theme.HEADER_DIM.render(toolText));
       visibleLen += toolText.length() + 2;
     }

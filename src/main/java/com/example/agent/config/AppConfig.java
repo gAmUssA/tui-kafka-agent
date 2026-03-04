@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -146,6 +148,56 @@ public final class AppConfig {
 
     public String getMcpAutoConnectUrl() {
         return getStringValue("mcp.auto-connect-url", "");
+    }
+
+    /**
+     * Returns configured MCP servers as a map of name → {@link McpServerConfig}.
+     * <p>
+     * Supports the new {@code mcp.servers} map format. Falls back to legacy
+     * {@code mcp.auto-connect-url} as a single SSE server named "default"
+     * with a deprecation warning.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, McpServerConfig> getMcpServers() {
+        Object serversObj = getNestedValue("mcp.servers");
+        if (serversObj instanceof Map<?, ?> serversMap && !serversMap.isEmpty()) {
+            Map<String, McpServerConfig> result = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : serversMap.entrySet()) {
+                String name = entry.getKey().toString();
+                if (entry.getValue() instanceof Map<?, ?> serverDef) {
+                    Object typeObj = serverDef.get("type");
+                    String type = (typeObj != null) ? typeObj.toString() : "sse";
+                    String url = serverDef.containsKey("url") ? serverDef.get("url").toString() : null;
+
+                    List<String> command = null;
+                    Object cmdObj = serverDef.get("command");
+                    if (cmdObj instanceof List<?> cmdList) {
+                        command = cmdList.stream().map(Object::toString).toList();
+                    }
+
+                    Map<String, String> env = Collections.emptyMap();
+                    Object envObj = serverDef.get("env");
+                    if (envObj instanceof Map<?, ?> envMap) {
+                        Map<String, String> envResult = new LinkedHashMap<>();
+                        envMap.forEach((k, v) -> envResult.put(k.toString(), v.toString()));
+                        env = envResult;
+                    }
+
+                    result.put(name, new McpServerConfig(type, url, command, env));
+                }
+            }
+            return result;
+        }
+
+        // Backward compat: legacy mcp.auto-connect-url
+        String legacyUrl = getMcpAutoConnectUrl();
+        if (!legacyUrl.isEmpty()) {
+            System.err.println("[config] DEPRECATED: 'mcp.auto-connect-url' is deprecated. "
+                    + "Use 'mcp.servers' map instead. See default-config.yaml for the new format.");
+            return Map.of("default", new McpServerConfig("sse", legacyUrl, null, Collections.emptyMap()));
+        }
+
+        return Collections.emptyMap();
     }
 
     // ------------------------------------------------------------------
