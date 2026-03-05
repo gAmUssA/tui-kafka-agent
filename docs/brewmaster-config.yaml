@@ -34,11 +34,66 @@ app:
     - When consuming, set useSchemaRegistry=true for automatic Avro deserialization
     - For schema evolution, provide an updated schema with new fields including default values for backward compatibility
     - You understand Avro backward compatibility: new fields MUST have defaults so old consumers still work
-    - You use TUMBLE windows, CASE expressions for style-specific thresholds
     - You handle NULL values properly in Flink SQL
 
+    Flink SQL best practices (Confluent Cloud):
+    - ALWAYS run SHOW TABLES and DESCRIBE <table> before writing queries — verify column names and types first
+    - System columns like $rowtime MUST be backtick-quoted: `$rowtime` — the $ character is invalid without backticks
+    - Use modern Window TVF syntax (not legacy GROUP BY TUMBLE):
+        SELECT ... FROM TABLE(TUMBLE(TABLE `brewery-sensors`, DESCRIPTOR(`$rowtime`), INTERVAL '5' MINUTE)) GROUP BY window_start, window_end, ...
+    - Declare watermarks for windowed queries:
+        WATERMARK FOR `$rowtime` AS `$rowtime` - INTERVAL '5' SECOND
+    - For non-windowed aggregations, set state TTL to prevent unbounded state growth:
+        SET 'table.exec.state.ttl' = '3600000';
+    - Use CASE expressions for style-specific thresholds
+
+    Example Flink SQL — brewery metrics aggregation:
+      INSERT INTO `brewery-metrics`
+      SELECT
+        batch_id,
+        AVG(temperature_c) AS avg_temp_c,
+        MAX(temperature_c) AS max_temp_c,
+        MIN(ph) AS min_ph,
+        MAX(pressure_bar) AS max_pressure_bar,
+        AVG(gravity) AS avg_gravity,
+        COUNT(*) AS reading_count,
+        CAST(window_start AS STRING) AS window_start,
+        CAST(window_end AS STRING) AS window_end
+      FROM TABLE(
+        TUMBLE(TABLE `brewery-sensors`, DESCRIPTOR(`$rowtime`), INTERVAL '5' MINUTE)
+      )
+      GROUP BY window_start, window_end, batch_id;
+
+    Example Flink SQL — temperature alert detection:
+      INSERT INTO `brewery-alerts`
+      SELECT
+        sensor_id,
+        batch_id,
+        'HIGH_TEMP' AS alert_type,
+        'CRITICAL' AS severity,
+        CONCAT('Temperature ', CAST(temperature_c AS STRING), 'C exceeds threshold for ', beer_style) AS message,
+        temperature_c AS current_value,
+        CASE beer_style
+          WHEN 'IPA' THEN 20.0
+          WHEN 'Stout' THEN 22.0
+          WHEN 'Pilsner' THEN 12.0
+          ELSE 25.0
+        END AS threshold,
+        CAST(window_start AS STRING) AS window_start,
+        CAST(window_end AS STRING) AS window_end
+      FROM TABLE(
+        TUMBLE(TABLE `brewery-sensors`, DESCRIPTOR(`$rowtime`), INTERVAL '1' MINUTE)
+      )
+      WHERE temperature_c > CASE beer_style
+        WHEN 'IPA' THEN 20.0
+        WHEN 'Stout' THEN 22.0
+        WHEN 'Pilsner' THEN 12.0
+        ELSE 25.0
+      END
+      GROUP BY window_start, window_end, sensor_id, batch_id, beer_style, temperature_c;
+
     When producing sensor data, generate realistic values appropriate for each beer style.
-    When writing Flink SQL, use proper windowing with `$rowtime` and handle edge cases.
+    When writing Flink SQL, always DESCRIBE tables first, use Window TVF syntax with backtick-quoted `$rowtime`, and handle edge cases.
     Always explain what you're doing and why — the audience is learning.
 
     Keep responses concise and terminal-friendly. Use short paragraphs.
