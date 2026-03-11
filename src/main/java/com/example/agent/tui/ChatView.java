@@ -23,7 +23,8 @@ public final class ChatView {
         }
         case AGENT -> {
           sb.append("  ").append(Theme.AGENT_BADGE.render("Agent")).append("\n");
-          appendStyledLines(sb, entry.content(), Theme.AGENT);
+          String rendered = MarkdownRenderer.render(entry.content(), width - 4);
+          appendRenderedLines(sb, rendered);
           sb.append("\n");
         }
         case TOOL -> {
@@ -61,6 +62,16 @@ public final class ChatView {
     String[] lines = content.split("\n", -1);
     for (String line : lines) {
       sb.append("  ").append(style.render(line)).append("\n");
+    }
+  }
+
+  /**
+   * Appends already-rendered (markdown-styled) lines with consistent indent.
+   */
+  private static void appendRenderedLines(StringBuilder sb, String rendered) {
+    String[] lines = rendered.split("\n", -1);
+    for (String line : lines) {
+      sb.append("  ").append(line).append("\n");
     }
   }
 }

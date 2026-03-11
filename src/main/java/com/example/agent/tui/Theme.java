@@ -187,6 +187,65 @@ public final class Theme {
     public static final Style TOOL_BOX_BORDER = Style.newStyle()
             .foreground(Color.color(GOLD));
 
+    // ── Markdown rendering styles ──────────────────────────────────────────
+
+    private static final String CYAN     = "#56B6C2";
+    private static final String MAGENTA  = "#C678DD";
+    private static final String CODE_BG  = "#2C313A";
+
+    public static final Style MD_H1 = Style.newStyle()
+            .foreground(Color.color(BLUE)).bold(true).underline(true);
+
+    public static final Style MD_H2 = Style.newStyle()
+            .foreground(Color.color(BLUE)).bold(true);
+
+    public static final Style MD_H3 = Style.newStyle()
+            .foreground(Color.color(CYAN)).bold(true);
+
+    public static final Style MD_BOLD = Style.newStyle()
+            .foreground(Color.color(WHITE)).bold(true);
+
+    public static final Style MD_ITALIC = Style.newStyle()
+            .foreground(Color.color(WHITE)).italic(true);
+
+    public static final Style MD_BOLD_ITALIC = Style.newStyle()
+            .foreground(Color.color(WHITE)).bold(true).italic(true);
+
+    public static final Style MD_INLINE_CODE = Style.newStyle()
+            .foreground(Color.color(CYAN))
+            .background(Color.color(CODE_BG));
+
+    public static final Style MD_CODE_BLOCK = Style.newStyle()
+            .foreground(Color.color(GREEN))
+            .background(Color.color(CODE_BG))
+            .padding(0, 1)
+            .border(Borders.roundedBorder())
+            .borderForeground(Color.color(SEP_GRAY));
+
+    public static final Style MD_CODE_LANG = Style.newStyle()
+            .foreground(Color.color(DIM_GRAY)).italic(true);
+
+    public static final Style MD_BLOCKQUOTE = Style.newStyle()
+            .foreground(Color.color(DIM_GRAY)).italic(true);
+
+    public static final Style MD_BLOCKQUOTE_BAR = Style.newStyle()
+            .foreground(Color.color(MAGENTA));
+
+    public static final Style MD_LIST_BULLET = Style.newStyle()
+            .foreground(Color.color(BLUE));
+
+    public static final Style MD_LIST_NUM = Style.newStyle()
+            .foreground(Color.color(BLUE)).bold(true);
+
+    public static final Style MD_LINK_TEXT = Style.newStyle()
+            .foreground(Color.color(BLUE)).underline(true);
+
+    public static final Style MD_LINK_URL = Style.newStyle()
+            .foreground(Color.color(DIM_GRAY));
+
+    public static final Style MD_HR = Style.newStyle()
+            .foreground(Color.color(SEP_GRAY));
+
     // ── Command suggestion popup styles ──────────────────────────────────
 
     public static final Style SUGGESTION_SELECTED = Style.newStyle()

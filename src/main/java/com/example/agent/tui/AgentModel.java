@@ -15,6 +15,8 @@ import com.williamcallahan.tui4j.compat.bubbletea.KeyPressMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.Message;
 import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
+import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
 
@@ -69,6 +71,8 @@ public class AgentModel implements Model {
     spinner = new Spinner(SpinnerType.DOT);
 
     viewport = Viewport.create(118, 24);
+    viewport.setMouseWheelEnabled(true);
+    viewport.setMouseWheelDelta(3);
   }
 
   public void setStreamBridge(StreamBridge streamBridge) {
@@ -238,6 +242,19 @@ public class AgentModel implements Model {
       textarea.setWidth(width - 2);
       viewport.setWidth(width - 2);
       viewport.setHeight(height - INPUT_HEIGHT - HEADER_HEIGHT - 2);
+      return UpdateResult.from(this);
+    }
+
+    // Handle mouse events — scroll wheel goes to viewport, others are consumed
+    if (msg instanceof MouseMessage mouse) {
+      if (mouse.isWheel()) {
+        if (mouse.getButton() == MouseButton.MouseButtonWheelUp) {
+          viewport.scrollUp(3);
+        } else if (mouse.getButton() == MouseButton.MouseButtonWheelDown) {
+          viewport.scrollDown(3);
+        }
+      }
+      // Consume all mouse events — don't let them leak into textarea/spinner
       return UpdateResult.from(this);
     }
 
@@ -523,12 +540,13 @@ public class AgentModel implements Model {
           .append(Theme.SPINNER_TEXT.render(" Calling " + currentToolName + "()..."))
           .append("\n\n");
     }
-    // Show partial response while streaming
+    // Show partial response while streaming (with live markdown rendering)
     if (isStreaming && currentResponse != null && !currentResponse.isEmpty()) {
       sb.append("  ").append(Theme.AGENT_BADGE.render("Agent")).append("\n");
-      String[] lines = currentResponse.toString().split("\n", -1);
+      String rendered = MarkdownRenderer.render(currentResponse.toString(), width - 4);
+      String[] lines = rendered.split("\n", -1);
       for (int i = 0; i < lines.length; i++) {
-        sb.append("  ").append(Theme.AGENT.render(lines[i]));
+        sb.append("  ").append(lines[i]);
         if (i == lines.length - 1) {
           sb.append(Theme.CURSOR.render("\u258C"));
         }
