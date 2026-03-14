@@ -62,7 +62,7 @@ public class AgentModel implements Model {
   public AgentModel() {
     textarea = new Textarea();
     textarea.setPlaceholder("Type a message... (/ for commands)");
-    textarea.setWidth(118);
+    textarea.setWidth(width - 2);
     textarea.setHeight(INPUT_HEIGHT);
     textarea.setShowLineNumbers(false);
     textarea.setCharLimit(0);
@@ -70,7 +70,7 @@ public class AgentModel implements Model {
 
     spinner = new Spinner(SpinnerType.DOT);
 
-    viewport = Viewport.create(118, 24);
+    viewport = Viewport.create(width - 2, height - INPUT_HEIGHT - HEADER_HEIGHT - 2);
     viewport.setMouseWheelEnabled(true);
     viewport.setMouseWheelDelta(3);
   }
@@ -93,7 +93,7 @@ public class AgentModel implements Model {
     // Deferred to init() — Style.render() requires terminal to be initialized
     textarea.setPrompt(Theme.INPUT_PROMPT.render("\u276F "));
     String name = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-    viewport.setContent(renderWelcome(name, 118));
+    viewport.setContent(renderWelcome(name, width - 2));
     return textarea.init();
   }
 
@@ -242,6 +242,13 @@ public class AgentModel implements Model {
       textarea.setWidth(width - 2);
       viewport.setWidth(width - 2);
       viewport.setHeight(height - INPUT_HEIGHT - HEADER_HEIGHT - 2);
+      // Re-render content with new dimensions
+      if (chatHistory.isEmpty() && !isStreaming) {
+        String name = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
+        viewport.setContent(renderWelcome(name, width - 2));
+      } else {
+        refreshViewport();
+      }
       return UpdateResult.from(this);
     }
 
