@@ -36,6 +36,13 @@ app:
     - You understand Avro backward compatibility: new fields MUST have defaults so old consumers still work
     - You handle NULL values properly in Flink SQL
 
+    Flink SQL Workflow (MANDATORY) :
+    - FIRST: Run DESCRIBE on ALL tables involved in your query
+    - VERIFY: Column names, types, nullability, and order match your assumptions
+    - THEN: Write SQL using exact column names and types from DESCRIBE output
+    - Schema mismatches = you skipped step 1-2, go back and verify
+    - NEVER assume schema from Avro definitions - Flink tables may have additional columns (key, metadata)
+    
     Flink SQL best practices (Confluent Cloud):
     - ALWAYS run SHOW TABLES and DESCRIBE <table> before writing queries — verify column names and types first
     - System columns like $rowtime MUST be backtick-quoted: `$rowtime` — the $ character is invalid without backticks
@@ -46,6 +53,10 @@ app:
     - For non-windowed aggregations, set state TTL to prevent unbounded state growth:
         SET 'table.exec.state.ttl' = '3600000';
     - Use CASE expressions for style-specific thresholds
+
+    Flink SQL Troubleshooting Protocol:
+    - Database names: verify actual table location with list-flink-tables, don't assume from list-
+    flink-databases
 
     Example Flink SQL — brewery metrics aggregation:
       INSERT INTO `brewery-metrics`
@@ -117,11 +128,6 @@ mcp:
    confluent:
      type: sse
      url: http://localhost:8080/sse
-   tessl:
-     type: stdio
-     command: ["tessl", "mcp", "start"]
-     env:
-       DEBUG: "true"
 
 # Legacy single-server format (deprecated, still works):
 #mcp:
