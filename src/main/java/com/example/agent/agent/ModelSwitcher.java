@@ -8,9 +8,9 @@ import java.util.Map;
 public final class ModelSwitcher {
 
     private static final Map<String, String> MODEL_MAP = Map.of(
-            "sonnet", "claude-sonnet-4-20250514",
-            "haiku", "claude-haiku-4-20250414",
-            "opus", "claude-opus-4-20250514"
+            "sonnet", "claude-sonnet-4-6",
+            "haiku", "claude-haiku-4-5",
+            "opus", "claude-opus-4-7"
     );
 
     private ModelSwitcher() {

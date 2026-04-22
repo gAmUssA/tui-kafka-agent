@@ -78,7 +78,7 @@ public final class AppConfig {
     }
 
     public String getAnthropicModel() {
-        return getStringValue("anthropic.model", "claude-sonnet-4-20250514");
+        return getStringValue("anthropic.model", "claude-sonnet-4-6");
     }
 
     public int getAnthropicMaxTokens() {
