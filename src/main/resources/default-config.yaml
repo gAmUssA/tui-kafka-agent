@@ -22,6 +22,9 @@
 # mcp:
 #   auto-connect-url: http://localhost:8080/sse
 
+## Chat model provider — "anthropic" (default) or "ollama"
+provider: ollama
+
 anthropic:
   api-key: ${ANTHROPIC_API_KEY}
   model: claude-sonnet-4-6
@@ -31,6 +34,17 @@ anthropic:
   thinking:
     enabled: false
     budget-tokens: 2048
+
+## Local Ollama provider (requires `ollama serve` running locally).
+## Recommended models with reliable tool calling for the kafka-agent demo:
+##   qwen2.5:7b   — 4.7GB, strong tool calling, fast on M-series Macs (default)
+##   llama3.1:8b  — 4.9GB, decent tool calling, well-supported
+## Models WITHOUT tool support (3.x haiku-class, base llama2, codellama) will
+## silently ignore tool definitions — you'll get prompt-only responses.
+ollama:
+  base-url: http://localhost:11434
+  model: qwen2.5:7b
+  timeout-seconds: 120
 confluent:
   bootstrap-servers: ${CONFLUENT_BOOTSTRAP}
   api-key: ${CONFLUENT_API_KEY}

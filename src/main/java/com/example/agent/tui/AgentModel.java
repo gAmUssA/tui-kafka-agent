@@ -3,6 +3,8 @@ package com.example.agent.tui;
 import com.example.agent.agent.AgentAssistant;
 import com.example.agent.agent.AgentFactory;
 import com.example.agent.agent.ModelSwitcher;
+import com.example.agent.agent.OllamaModelDiscovery;
+import com.example.agent.agent.Provider;
 import com.example.agent.agent.StreamBridge;
 import com.example.agent.config.AppConfig;
 import com.example.agent.tools.McpBridge;
@@ -45,7 +47,9 @@ public class AgentModel implements Model {
   private boolean isToolExecuting;
   private String currentToolName;
   private StringBuilder currentResponse;
+  private Provider activeProvider;
   private String activeModel;
+  private final OllamaModelDiscovery ollamaDiscovery = new OllamaModelDiscovery();
   private boolean thinkingEnabled;
   private boolean toolOutputExpanded;
   private boolean quitRequested;
@@ -106,7 +110,10 @@ public class AgentModel implements Model {
 
   public void setAppConfig(AppConfig appConfig) {
     this.appConfig = appConfig;
-    this.activeModel = appConfig.getAnthropicModel();
+    this.activeProvider = appConfig.getProvider();
+    this.activeModel = (activeProvider == Provider.OLLAMA)
+        ? appConfig.getOllamaModel()
+        : appConfig.getAnthropicModel();
   }
 
   public void setMcpBridge(McpBridge mcpBridge) {
@@ -346,7 +353,7 @@ public class AgentModel implements Model {
                     ? mcpBridge.getToolCount() : 0;
     int serverCount = (mcpBridge != null) ? mcpBridge.getConnectedServers().size() : 0;
     String appName = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-    String header = HeaderView.render(appName, activeModel, toolCount, serverCount, isStreaming, isToolExecuting, width);
+    String header = HeaderView.render(appName, activeProvider, activeModel, toolCount, serverCount, isStreaming, isToolExecuting, width);
     String separator = Theme.SEPARATOR.render("─".repeat(Math.max(1, width)));
 
     String suggestionPopup = (showSuggestions && !filteredSuggestions.isEmpty())
@@ -426,20 +433,57 @@ public class AgentModel implements Model {
 
   private void handleModel(List<String> args) {
     if (args.isEmpty()) {
-      chatHistory.add(ChatEntry.tool("Current model: " + activeModel
-                                     + "\nUsage: /model <" + ModelSwitcher.availableModels() + ">"));
+      chatHistory.add(ChatEntry.tool(renderModelHelp()));
       return;
     }
-    String shortName = args.getFirst();
-    String resolved = ModelSwitcher.resolve(shortName);
-    if (resolved == null) {
-      chatHistory.add(ChatEntry.error(
-          "Unknown model: " + shortName + ". Available: " + ModelSwitcher.availableModels()));
+
+    String input = args.getFirst();
+    ModelSwitcher.Resolved resolved;
+    try {
+      resolved = ModelSwitcher.resolve(input, activeProvider);
+    } catch (IllegalArgumentException e) {
+      chatHistory.add(ChatEntry.error(e.getMessage()));
       return;
     }
-    activeModel = resolved;
+
+    // For Ollama, validate that the model is actually pulled locally.
+    // Skip validation if discovery itself fails (server down) — let the chat
+    // request bubble up the real error rather than blocking on a stale check.
+    if (resolved.provider() == Provider.OLLAMA) {
+      List<String> installed = ollamaDiscovery.list(appConfig.getOllamaBaseUrl());
+      if (!installed.isEmpty() && !installed.contains(resolved.modelName())) {
+        chatHistory.add(ChatEntry.error(
+            "Ollama model '" + resolved.modelName() + "' is not installed locally.\n"
+                + "Run: ollama pull " + resolved.modelName() + "\n"
+                + "Installed: " + String.join(", ", installed)));
+        return;
+      }
+    }
+
+    activeProvider = resolved.provider();
+    activeModel = resolved.modelName();
     rebuildAssistant();
-    chatHistory.add(ChatEntry.tool("Switched to model: " + resolved));
+    chatHistory.add(ChatEntry.tool("Switched to " + activeProvider + ":" + activeModel));
+  }
+
+  private String renderModelHelp() {
+    var sb = new StringBuilder();
+    sb.append("Current: ").append(activeProvider).append(":").append(activeModel).append("\n\n");
+    sb.append("Usage:\n");
+    sb.append("  /model <name>                — switch model on current provider\n");
+    sb.append("  /model anthropic:<name>      — switch to Anthropic + model\n");
+    sb.append("  /model ollama:<name>         — switch to Ollama + model\n\n");
+    sb.append("Anthropic aliases: ").append(ModelSwitcher.anthropicAliases()).append("\n");
+
+    if (appConfig != null) {
+      List<String> ollamaModels = ollamaDiscovery.list(appConfig.getOllamaBaseUrl());
+      if (!ollamaModels.isEmpty()) {
+        sb.append("Ollama installed: ").append(String.join(", ", ollamaModels));
+      } else {
+        sb.append("Ollama: server unreachable at ").append(appConfig.getOllamaBaseUrl());
+      }
+    }
+    return sb.toString();
   }
 
   private void handleThinking() {
@@ -505,7 +549,8 @@ public class AgentModel implements Model {
   private void rebuildAssistant() {
     if (appConfig == null) return;
     var tp = (mcpBridge != null && mcpBridge.isConnected()) ? mcpBridge.getToolProvider() : null;
-    AgentAssistant newAssistant = AgentFactory.create(appConfig, tp, activeModel, thinkingEnabled);
+    AgentAssistant newAssistant = AgentFactory.create(
+        appConfig, tp, activeProvider, activeModel, thinkingEnabled);
     streamBridge.setAssistant(newAssistant);
   }
 

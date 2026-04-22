@@ -1,14 +1,15 @@
 package com.example.agent.agent;
 
 import com.example.agent.config.AppConfig;
-import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.tool.ToolProvider;
 
 /**
- * Wires the AiServices builder with the streaming model and chat memory.
- * Supports rebuilding with additional tool providers (e.g., from MCP).
+ * Wires the AiServices builder with a provider-agnostic streaming chat model
+ * and chat memory. Supports rebuilding with additional tool providers
+ * (e.g., from MCP) and switching between providers (Anthropic, Ollama).
  */
 public final class AgentFactory {
 
@@ -32,22 +33,41 @@ public final class AgentFactory {
     private AgentFactory() {
     }
 
+    // ------------------------------------------------------------------
+    // Convenience overloads — default to the configured provider
+    // ------------------------------------------------------------------
+
     public static AgentAssistant create(AppConfig config) {
-        return create(config, null, null, false);
+        return create(config, null, config.getProvider(), null, false);
     }
 
     public static AgentAssistant create(AppConfig config, ToolProvider toolProvider) {
-        return create(config, toolProvider, null, false);
+        return create(config, toolProvider, config.getProvider(), null, false);
     }
 
-    public static AgentAssistant create(AppConfig config, ToolProvider toolProvider, String modelOverride) {
-        return create(config, toolProvider, modelOverride, false);
+    public static AgentAssistant create(
+            AppConfig config, ToolProvider toolProvider, String modelOverride) {
+        return create(config, toolProvider, config.getProvider(), modelOverride, false);
     }
 
     public static AgentAssistant create(
             AppConfig config, ToolProvider toolProvider, String modelOverride, boolean thinkingEnabled) {
-        AnthropicStreamingChatModel model =
-                AnthropicConfig.createStreamingModel(config, modelOverride, thinkingEnabled);
+        return create(config, toolProvider, config.getProvider(), modelOverride, thinkingEnabled);
+    }
+
+    // ------------------------------------------------------------------
+    // Primary constructor — explicit provider
+    // ------------------------------------------------------------------
+
+    public static AgentAssistant create(
+            AppConfig config,
+            ToolProvider toolProvider,
+            Provider provider,
+            String modelOverride,
+            boolean thinkingEnabled) {
+
+        StreamingChatModel model =
+                ChatModelFactory.create(config, provider, modelOverride, thinkingEnabled);
 
         var builder = AiServices.builder(AgentAssistant.class)
                 .streamingChatModel(model)

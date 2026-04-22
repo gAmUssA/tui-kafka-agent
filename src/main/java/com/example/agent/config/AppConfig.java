@@ -1,5 +1,6 @@
 package com.example.agent.config;
 
+import com.example.agent.agent.Provider;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
@@ -67,6 +68,35 @@ public final class AppConfig {
         appConfig.validate();
 
         return appConfig;
+    }
+
+    // ------------------------------------------------------------------
+    // Typed getters — Provider selection
+    // ------------------------------------------------------------------
+
+    /**
+     * Returns the active chat model provider. Defaults to {@link Provider#ANTHROPIC}
+     * if {@code provider} is unset or blank in config. Throws
+     * {@link IllegalArgumentException} if the configured value is not recognized.
+     */
+    public Provider getProvider() {
+        return Provider.fromString(getStringValue("provider", "anthropic"));
+    }
+
+    // ------------------------------------------------------------------
+    // Typed getters — Ollama
+    // ------------------------------------------------------------------
+
+    public String getOllamaBaseUrl() {
+        return getStringValue("ollama.base-url", "http://localhost:11434");
+    }
+
+    public String getOllamaModel() {
+        return getStringValue("ollama.model", "qwen2.5:7b");
+    }
+
+    public int getOllamaTimeoutSeconds() {
+        return getIntValue("ollama.timeout-seconds", 120);
     }
 
     // ------------------------------------------------------------------
@@ -391,17 +421,34 @@ public final class AppConfig {
     // ------------------------------------------------------------------
 
     private void validate() {
-        String apiKey = getAnthropicApiKey();
-        if (apiKey == null || apiKey.isBlank()) {
+        Provider provider;
+        try {
+            provider = getProvider();
+        } catch (IllegalArgumentException e) {
             System.err.println();
-            System.err.println("ERROR: Anthropic API key is not configured.");
-            System.err.println();
-            System.err.println("Please set it via one of the following methods:");
-            System.err.println("  1. Environment variable:  export ANTHROPIC_API_KEY=sk-ant-...");
-            System.err.println("  2. Config file:           " + USER_CONFIG_PATH);
-            System.err.println("     Set 'anthropic.api-key' to your key value.");
+            System.err.println("ERROR: " + e.getMessage());
+            System.err.println("Set 'provider: anthropic' or 'provider: ollama' in your config.");
             System.err.println();
             System.exit(1);
+            return;
+        }
+
+        // Anthropic provider requires an API key; Ollama is keyless.
+        if (provider == Provider.ANTHROPIC) {
+            String apiKey = getAnthropicApiKey();
+            if (apiKey == null || apiKey.isBlank()) {
+                System.err.println();
+                System.err.println("ERROR: Anthropic API key is not configured.");
+                System.err.println();
+                System.err.println("Please set it via one of the following methods:");
+                System.err.println("  1. Environment variable:  export ANTHROPIC_API_KEY=sk-ant-...");
+                System.err.println("  2. Config file:           " + USER_CONFIG_PATH);
+                System.err.println("     Set 'anthropic.api-key' to your key value.");
+                System.err.println();
+                System.err.println("Or switch to a local provider with 'provider: ollama' in your config.");
+                System.err.println();
+                System.exit(1);
+            }
         }
     }
 }

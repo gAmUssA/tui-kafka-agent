@@ -1,5 +1,7 @@
 package com.example.agent.tui;
 
+import com.example.agent.agent.Provider;
+
 /**
  * Renders a professional status bar filling the full terminal width.
  * Tracks plain-text length separately from styled output to calculate
@@ -10,7 +12,8 @@ public final class HeaderView {
   private HeaderView() {
   }
 
-  public static String render(String appNameText, String model, int toolCount, int serverCount,
+  public static String render(String appNameText, Provider provider, String model,
+                              int toolCount, int serverCount,
                               boolean isStreaming, boolean isToolExecuting, int width) {
     var styled = new StringBuilder();
     int visibleLen = 0;
@@ -19,14 +22,15 @@ public final class HeaderView {
     styled.append(Theme.HEADER.render(appNameText));
     visibleLen += appNameText.length() + 2;
 
-    // Separator + model — HEADER_DIM has padding(0,1) = +2 visible chars
-    String sepModel = " \u2502 " + shortenModel(model);
+    // Separator + provider:model — HEADER_DIM has padding(0,1) = +2 visible chars
+    String providerModel = (provider != null ? provider.toString() : "?") + ":" + shortenModel(model);
+    String sepModel = " │ " + providerModel;
     styled.append(Theme.HEADER_DIM.render(sepModel));
     visibleLen += sepModel.length() + 2;
 
     // Tool count — HEADER_DIM has padding(0,1) = +2 visible chars
     if (toolCount > 0) {
-      String toolText = " \u2502 MCP: " + toolCount + " tools"
+      String toolText = " │ MCP: " + toolCount + " tools"
               + (serverCount > 1 ? " (" + serverCount + " servers)" : "");
       styled.append(Theme.HEADER_DIM.render(toolText));
       visibleLen += toolText.length() + 2;
@@ -34,7 +38,7 @@ public final class HeaderView {
 
     // Status indicator
     if (isToolExecuting) {
-      String sep = " \u2502 ";
+      String sep = " │ ";
       styled.append(Theme.HEADER_DIM.render(sep));
       visibleLen += sep.length() + 2; // HEADER_DIM padding
 
@@ -43,7 +47,7 @@ public final class HeaderView {
       styled.append(Theme.HEADER_STATUS.render(statusContent));
       visibleLen += 1 + " calling tool...".length() + 2; // dot + text + padding
     } else if (isStreaming) {
-      String sep = " \u2502 ";
+      String sep = " │ ";
       styled.append(Theme.HEADER_DIM.render(sep));
       visibleLen += sep.length() + 2;
 
