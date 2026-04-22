@@ -17,7 +17,6 @@ import com.williamcallahan.tui4j.compat.bubbletea.Model;
 import com.williamcallahan.tui4j.compat.bubbletea.UpdateResult;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseButton;
 import com.williamcallahan.tui4j.compat.bubbletea.input.MouseMessage;
-import com.williamcallahan.tui4j.compat.bubbletea.message.QuitMessage;
 import com.williamcallahan.tui4j.compat.bubbletea.message.WindowSizeMessage;
 
 import java.util.ArrayList;
@@ -36,8 +35,8 @@ public class AgentModel implements Model {
   private final List<ChatEntry> chatHistory = new ArrayList<>();
   private final List<ChatEntry> pendingToolResults = new ArrayList<>();
   private Spinner spinner;
-  private int width = 120;
-  private int height = 32;
+  private int width = 80;
+  private int height = 24;
 
   private StreamBridge streamBridge;
   private AppConfig appConfig;
@@ -58,11 +57,37 @@ public class AgentModel implements Model {
 
   private static final int INPUT_HEIGHT = 3;
   private static final int HEADER_HEIGHT = 2;
+  private static final int CHROME_HEIGHT = INPUT_HEIGHT + HEADER_HEIGHT + 2;
+  private static final int HORIZONTAL_PADDING = 2;
+  // Two-space indent on each side for content rendered inside the viewport
+  // (badge + indented body). Box-rendering helpers must subtract this from
+  // contentWidth() to avoid horizontal overflow.
+  private static final int INDENT_PADDING = 2;
+  private static final int MIN_SUPPORTED_WIDTH = 40;
+  private static final int MIN_SUPPORTED_HEIGHT = 10;
+  private static final int WELCOME_BOX_MAX_WIDTH = 84;
+
+  private int contentWidth() {
+    return Math.max(1, width - HORIZONTAL_PADDING);
+  }
+
+  /** Width available inside an indented content box (tool result, markdown, welcome). */
+  private int innerContentWidth() {
+    return Math.max(1, contentWidth() - INDENT_PADDING);
+  }
+
+  private int viewportHeight() {
+    return Math.max(1, height - CHROME_HEIGHT);
+  }
+
+  private boolean terminalTooSmall() {
+    return width < MIN_SUPPORTED_WIDTH || height < MIN_SUPPORTED_HEIGHT;
+  }
 
   public AgentModel() {
     textarea = new Textarea();
     textarea.setPlaceholder("Type a message... (/ for commands)");
-    textarea.setWidth(width - 2);
+    textarea.setWidth(contentWidth());
     textarea.setHeight(INPUT_HEIGHT);
     textarea.setShowLineNumbers(false);
     textarea.setCharLimit(0);
@@ -70,7 +95,7 @@ public class AgentModel implements Model {
 
     spinner = new Spinner(SpinnerType.DOT);
 
-    viewport = Viewport.create(width - 2, height - INPUT_HEIGHT - HEADER_HEIGHT - 2);
+    viewport = Viewport.create(contentWidth(), viewportHeight());
     viewport.setMouseWheelEnabled(true);
     viewport.setMouseWheelDelta(3);
   }
@@ -88,12 +113,31 @@ public class AgentModel implements Model {
     this.mcpBridge = mcpBridge;
   }
 
+  /**
+   * Seed the initial terminal size before {@link Program#run()} starts.
+   * tui4j 0.3.3 does not reliably emit a {@code WindowSizeMessage} on startup
+   * under some terminals (notably tmux), so the constructor's 80x24 defaults
+   * would otherwise render until the user manually resizes. Call this with
+   * dimensions queried from JLine before constructing the {@link Program}.
+   */
+  public void setInitialSize(int width, int height) {
+    if (width > 0) {
+      this.width = width;
+    }
+    if (height > 0) {
+      this.height = height;
+    }
+    textarea.setWidth(contentWidth());
+    viewport.setWidth(contentWidth());
+    viewport.setHeight(viewportHeight());
+  }
+
   @Override
   public Command init() {
     // Deferred to init() — Style.render() requires terminal to be initialized
     textarea.setPrompt(Theme.INPUT_PROMPT.render("\u276F "));
     String name = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-    viewport.setContent(renderWelcome(name, width - 2));
+    viewport.setContent(renderWelcome(name, innerContentWidth()));
     return textarea.init();
   }
 
@@ -159,7 +203,7 @@ public class AgentModel implements Model {
     if (msg instanceof KeyPressMessage keyMsg) {
       // Quit on Ctrl+C
       if ("ctrl+c".equals(keyMsg.key())) {
-        return UpdateResult.from(this, QuitMessage::new);
+        return UpdateResult.from(this, Command.quit());
       }
 
       // Toggle tool output collapsed/expanded
@@ -202,6 +246,12 @@ public class AgentModel implements Model {
         }
       }
 
+      // Esc quits when no suggestion popup is active (popup ESC handler above
+      // returns early when visible, so this only fires in the default state).
+      if ("esc".equals(keyMsg.key())) {
+        return UpdateResult.from(this, Command.quit());
+      }
+
       // Enter to submit message (intercept before textarea gets it)
       if ("enter".equals(keyMsg.key())) {
         if (isStreaming) {
@@ -217,17 +267,17 @@ public class AgentModel implements Model {
             chatHistory.add(ChatEntry.user(text));
             handleSlashCommand(cmd.get());
             if (quitRequested) {
-              return UpdateResult.from(this, QuitMessage::new);
+              return UpdateResult.from(this, Command.quit());
             }
             refreshViewport();
             return UpdateResult.from(this);
           }
 
-          // Regular chat message
+          // Regular chat message — currentResponse lazily initialized
+          // by the StreamTokenMessage handler on first token.
           chatHistory.add(ChatEntry.user(text));
           textarea.blur();
           isStreaming = true;
-          currentResponse = new StringBuilder();
           refreshViewport();
           streamBridge.sendMessage(text);
         }
@@ -239,20 +289,22 @@ public class AgentModel implements Model {
     if (msg instanceof WindowSizeMessage(int width1, int height1)) {
       this.width = width1;
       this.height = height1;
-      textarea.setWidth(width - 2);
-      viewport.setWidth(width - 2);
-      viewport.setHeight(height - INPUT_HEIGHT - HEADER_HEIGHT - 2);
+      textarea.setWidth(contentWidth());
+      viewport.setWidth(contentWidth());
+      viewport.setHeight(viewportHeight());
       // Re-render content with new dimensions
       if (chatHistory.isEmpty() && !isStreaming) {
         String name = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-        viewport.setContent(renderWelcome(name, width - 2));
+        viewport.setContent(renderWelcome(name, innerContentWidth()));
       } else {
         refreshViewport();
       }
       return UpdateResult.from(this);
     }
 
-    // Handle mouse events — scroll wheel goes to viewport, others are consumed
+    // Handle mouse wheel explicitly — viewport's native handler does bounds
+    // checking against its own Y position, but our viewport renders below a
+    // header so the bounds check fails. Drive scrolling directly instead.
     if (msg instanceof MouseMessage mouse) {
       if (mouse.isWheel()) {
         if (mouse.getButton() == MouseButton.MouseButtonWheelUp) {
@@ -287,6 +339,9 @@ public class AgentModel implements Model {
 
   @Override
   public String view() {
+    if (terminalTooSmall()) {
+      return renderTooSmallNotice();
+    }
     int toolCount = (mcpBridge != null && mcpBridge.isConnected())
                     ? mcpBridge.getToolCount() : 0;
     int serverCount = (mcpBridge != null) ? mcpBridge.getConnectedServers().size() : 0;
@@ -459,10 +514,10 @@ public class AgentModel implements Model {
       chatHistory.add(ChatEntry.error("No MCP server connected. Use /mcp <url> first."));
       return;
     }
-    // Send as AI request — the AI has the MCP tools to list topics
+    // Send as AI request — the AI has the MCP tools to list topics.
+    // currentResponse initialized lazily by StreamTokenMessage handler.
     textarea.blur();
     isStreaming = true;
-    currentResponse = new StringBuilder();
     streamBridge.sendMessage("List all my Kafka topics.");
   }
 
@@ -478,7 +533,6 @@ public class AgentModel implements Model {
     String query = String.join(" ", args);
     textarea.blur();
     isStreaming = true;
-    currentResponse = new StringBuilder();
     streamBridge.sendMessage("Execute this Flink SQL query: " + query);
   }
 
@@ -495,7 +549,6 @@ public class AgentModel implements Model {
     }
     textarea.blur();
     isStreaming = true;
-    currentResponse = new StringBuilder();
     streamBridge.sendMessage(prompt);
   }
 
@@ -530,9 +583,9 @@ public class AgentModel implements Model {
     for (ChatEntry toolEntry : pendingToolResults) {
       if (toolEntry.toolName() != null) {
         if (toolOutputExpanded) {
-          sb.append(ToolResultView.render(toolEntry.toolName(), toolEntry.content(), width - 4));
+          sb.append(ToolResultView.render(toolEntry.toolName(), toolEntry.content(), innerContentWidth()));
         } else {
-          sb.append(ToolResultView.renderCollapsed(toolEntry.toolName(), toolEntry.content(), width - 4));
+          sb.append(ToolResultView.renderCollapsed(toolEntry.toolName(), toolEntry.content(), innerContentWidth()));
         }
       } else {
         sb.append("  ").append(Theme.TOOL_BADGE.render("System"));
@@ -550,7 +603,7 @@ public class AgentModel implements Model {
     // Show partial response while streaming (with live markdown rendering)
     if (isStreaming && currentResponse != null && !currentResponse.isEmpty()) {
       sb.append("  ").append(Theme.AGENT_BADGE.render("Agent")).append("\n");
-      String rendered = MarkdownRenderer.render(currentResponse.toString(), width - 4);
+      String rendered = MarkdownRenderer.render(currentResponse.toString(), innerContentWidth());
       String[] lines = rendered.split("\n", -1);
       for (int i = 0; i < lines.length; i++) {
         sb.append("  ").append(lines[i]);
@@ -571,7 +624,25 @@ public class AgentModel implements Model {
     }
   }
 
-  private static String renderWelcome(String appName, int width) {
+  /**
+   * Plain-text notice shown when the terminal is below the minimum supported
+   * size. Avoids rendering chrome that would overflow or clip in tiny windows.
+   */
+  private String renderTooSmallNotice() {
+    String line1 = String.format("Terminal too small (%dx%d).", width, height);
+    String line2 = String.format("Resize to at least %dx%d to use kafka-agent.",
+        MIN_SUPPORTED_WIDTH, MIN_SUPPORTED_HEIGHT);
+    String line3 = "Press Ctrl+C to quit.";
+    return "\n" + line1 + "\n" + line2 + "\n\n" + line3 + "\n";
+  }
+
+  /**
+   * Render the welcome banner. {@code availableWidth} is the width budget the
+   * caller has measured ({@link #innerContentWidth()}); the box is sized to
+   * fit that budget, capped at {@link #WELCOME_BOX_MAX_WIDTH} for readability
+   * on wide terminals.
+   */
+  private static String renderWelcome(String appName, int availableWidth) {
     String title = Theme.WELCOME_TITLE.render(appName);
     String subtitle = Theme.WELCOME_TEXT.render("AI-powered Kafka & Flink assistant");
     String hint1 = Theme.WELCOME_TEXT.render("Type a message to begin");
@@ -579,7 +650,7 @@ public class AgentModel implements Model {
     String hint3 = Theme.WELCOME_TEXT.render("Ctrl+O to show/hide tool output");
 
     String content = title + "\n\n" + subtitle + "\n\n" + hint1 + "\n" + hint2 + "\n" + hint3;
-    int boxWidth = Math.min(width - 4, 72);
+    int boxWidth = Math.max(20, Math.min(availableWidth, WELCOME_BOX_MAX_WIDTH));
     return Theme.WELCOME_BOX.width(boxWidth).margin(1, 0, 1, 2).render(content);
   }
 }
