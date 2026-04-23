@@ -6,6 +6,7 @@ import com.example.agent.agent.ModelSwitcher;
 import com.example.agent.agent.OllamaModelDiscovery;
 import com.example.agent.agent.Provider;
 import com.example.agent.agent.StreamBridge;
+import com.example.agent.agent.UsageTracker;
 import com.example.agent.config.AppConfig;
 import com.example.agent.tools.McpBridge;
 import com.williamcallahan.tui4j.compat.bubbles.spinner.Spinner;
@@ -50,6 +51,7 @@ public class AgentModel implements Model {
   private Provider activeProvider;
   private String activeModel;
   private final OllamaModelDiscovery ollamaDiscovery = new OllamaModelDiscovery();
+  private final UsageTracker usageTracker = new UsageTracker();
   private boolean thinkingEnabled;
   private boolean toolOutputExpanded;
   private boolean quitRequested;
@@ -60,7 +62,8 @@ public class AgentModel implements Model {
   private int selectedSuggestion;
 
   private static final int INPUT_HEIGHT = 3;
-  private static final int HEADER_HEIGHT = 2;
+  // header bar + usage line + separator beneath them
+  private static final int HEADER_HEIGHT = 3;
   private static final int CHROME_HEIGHT = INPUT_HEIGHT + HEADER_HEIGHT + 2;
   private static final int HORIZONTAL_PADDING = 2;
   // Two-space indent on each side for content rendered inside the viewport
@@ -118,6 +121,15 @@ public class AgentModel implements Model {
 
   public void setMcpBridge(McpBridge mcpBridge) {
     this.mcpBridge = mcpBridge;
+  }
+
+  /**
+   * Returns the session-scoped {@link UsageTracker} so {@link com.example.agent.AgentApp}
+   * can register it on the initial assistant — built before AgentModel's
+   * setters are wired and would otherwise miss the first request.
+   */
+  public UsageTracker getUsageTracker() {
+    return usageTracker;
   }
 
   /**
@@ -354,6 +366,7 @@ public class AgentModel implements Model {
     int serverCount = (mcpBridge != null) ? mcpBridge.getConnectedServers().size() : 0;
     String appName = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
     String header = HeaderView.render(appName, activeProvider, activeModel, toolCount, serverCount, isStreaming, isToolExecuting, width);
+    String usage = HeaderView.renderUsage(usageTracker.snapshot());
     String separator = Theme.SEPARATOR.render("─".repeat(Math.max(1, width)));
 
     String suggestionPopup = (showSuggestions && !filteredSuggestions.isEmpty())
@@ -361,6 +374,7 @@ public class AgentModel implements Model {
         : "";
 
     return header + "\n"
+           + usage + "\n"
            + separator + "\n"
            + viewport.view() + "\n"
            + separator + "\n"
@@ -376,6 +390,7 @@ public class AgentModel implements Model {
       case "model" -> handleModel(cmd.args());
       case "thinking" -> handleThinking();
       case "mcp" -> handleMcp(cmd.args());
+      case "usage" -> handleUsage(cmd.args());
       case "topics" -> handleTopicsShortcut();
       case "sql" -> handleSqlShortcut(cmd.args());
       case "quit" -> quitRequested = true;
@@ -546,11 +561,37 @@ public class AgentModel implements Model {
     }
   }
 
+  private void handleUsage(List<String> args) {
+    if (!args.isEmpty() && "reset".equalsIgnoreCase(args.getFirst())) {
+      usageTracker.reset();
+      chatHistory.add(ChatEntry.tool("Usage counters reset."));
+      return;
+    }
+    var s = usageTracker.snapshot();
+    var sb = new StringBuilder("Token usage (session totals):\n");
+    sb.append(String.format("  Requests:        %d (errors: %d)%n", s.requests(), s.errors()));
+    sb.append(String.format("  Input tokens:    %,d%n", s.inputTokens()));
+    sb.append(String.format("  Output tokens:   %,d%n", s.outputTokens()));
+    sb.append(String.format("  Total tokens:    %,d%n", s.totalTokens()));
+    if (s.estimatedCostUsd() > 0) {
+      sb.append(String.format("  Estimated cost:  $%.4f USD%n", s.estimatedCostUsd()));
+    } else {
+      sb.append("  Estimated cost:  $0.00 (no priced models, or local provider)\n");
+    }
+    sb.append(String.format("  Last latency:    %d ms%n", s.lastLatencyMs()));
+    if (!s.lastModel().isEmpty()) {
+      sb.append("  Last model:      ").append(s.lastModel()).append("\n");
+    }
+    sb.append("\nNote: tool-calling loops issue extra round-trips, so totals may exceed\n");
+    sb.append("one bump per user message. Use /usage reset to clear.");
+    chatHistory.add(ChatEntry.tool(sb.toString().stripTrailing()));
+  }
+
   private void rebuildAssistant() {
     if (appConfig == null) return;
     var tp = (mcpBridge != null && mcpBridge.isConnected()) ? mcpBridge.getToolProvider() : null;
     AgentAssistant newAssistant = AgentFactory.create(
-        appConfig, tp, activeProvider, activeModel, thinkingEnabled);
+        appConfig, tp, activeProvider, activeModel, thinkingEnabled, usageTracker);
     streamBridge.setAssistant(newAssistant);
   }
 

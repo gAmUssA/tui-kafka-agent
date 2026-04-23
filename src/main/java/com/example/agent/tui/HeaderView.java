@@ -1,6 +1,7 @@
 package com.example.agent.tui;
 
 import com.example.agent.agent.Provider;
+import com.example.agent.agent.UsageTracker;
 
 /**
  * Renders a professional status bar filling the full terminal width.
@@ -63,6 +64,35 @@ public final class HeaderView {
     }
 
     return styled.toString();
+  }
+
+  /**
+   * Render a one-line usage summary below the main header bar.
+   * Always returns a fixed-height line (even before the first request) so
+   * the chrome height stays stable across renders.
+   */
+  public static String renderUsage(UsageTracker.Snapshot s) {
+    if (s.requests() == 0) {
+      return Theme.SYSTEM.render("  tokens: — (no requests yet)");
+    }
+    String costPart = s.estimatedCostUsd() > 0
+            ? String.format("  $%.4f", s.estimatedCostUsd())
+            : "  $0.00 (local)";
+    String errPart = s.errors() > 0 ? "  " + s.errors() + " err" : "";
+    String text = String.format(
+            "  tokens: %s in · %s out%s  last %dms  %d req%s%s",
+            formatN(s.inputTokens()),
+            formatN(s.outputTokens()),
+            costPart,
+            s.lastLatencyMs(),
+            s.requests(),
+            s.requests() == 1 ? "" : "s",
+            errPart);
+    return Theme.SYSTEM.render(text);
+  }
+
+  private static String formatN(long n) {
+    return String.format("%,d", n);
   }
 
   private static String shortenModel(String model) {

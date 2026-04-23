@@ -3,6 +3,7 @@ package com.example.agent.agent;
 import com.example.agent.config.AppConfig;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolProvider;
 
@@ -38,26 +39,22 @@ public final class AgentFactory {
     // ------------------------------------------------------------------
 
     public static AgentAssistant create(AppConfig config) {
-        return create(config, null, config.getProvider(), null, false);
+        return create(config, null, config.getProvider(), null, false, null);
     }
 
     public static AgentAssistant create(AppConfig config, ToolProvider toolProvider) {
-        return create(config, toolProvider, config.getProvider(), null, false);
+        return create(config, toolProvider, config.getProvider(), null, false, null);
     }
 
     public static AgentAssistant create(
             AppConfig config, ToolProvider toolProvider, String modelOverride) {
-        return create(config, toolProvider, config.getProvider(), modelOverride, false);
+        return create(config, toolProvider, config.getProvider(), modelOverride, false, null);
     }
 
     public static AgentAssistant create(
             AppConfig config, ToolProvider toolProvider, String modelOverride, boolean thinkingEnabled) {
-        return create(config, toolProvider, config.getProvider(), modelOverride, thinkingEnabled);
+        return create(config, toolProvider, config.getProvider(), modelOverride, thinkingEnabled, null);
     }
-
-    // ------------------------------------------------------------------
-    // Primary constructor — explicit provider
-    // ------------------------------------------------------------------
 
     public static AgentAssistant create(
             AppConfig config,
@@ -65,9 +62,23 @@ public final class AgentFactory {
             Provider provider,
             String modelOverride,
             boolean thinkingEnabled) {
+        return create(config, toolProvider, provider, modelOverride, thinkingEnabled, null);
+    }
 
-        StreamingChatModel model =
-                ChatModelFactory.create(config, provider, modelOverride, thinkingEnabled);
+    // ------------------------------------------------------------------
+    // Primary constructor — explicit provider + optional listener
+    // ------------------------------------------------------------------
+
+    public static AgentAssistant create(
+            AppConfig config,
+            ToolProvider toolProvider,
+            Provider provider,
+            String modelOverride,
+            boolean thinkingEnabled,
+            ChatModelListener listener) {
+
+        StreamingChatModel model = ChatModelFactory.create(
+                config, provider, modelOverride, thinkingEnabled, listener);
 
         var builder = AiServices.builder(AgentAssistant.class)
                 .streamingChatModel(model)

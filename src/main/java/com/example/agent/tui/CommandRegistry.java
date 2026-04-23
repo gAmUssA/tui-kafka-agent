@@ -28,9 +28,10 @@ public final class CommandRegistry {
         new CommandInfo("help", "", "Show this help message"),
         new CommandInfo("clear", "", "Clear chat history"),
         new CommandInfo("tools", "", "List available tools"),
-        new CommandInfo("model", "<name>", "Switch model (sonnet, haiku, opus)"),
+        new CommandInfo("model", "[<provider>:]<name>", "Switch model (sonnet, haiku, opus, ollama:qwen2.5:7b, ...)"),
         new CommandInfo("thinking", "", "Toggle extended thinking mode"),
         new CommandInfo("mcp", "[name] <url> | disconnect [name]", "Manage MCP servers"),
+        new CommandInfo("usage", "[reset]", "Show token usage and cost; reset clears totals"),
         new CommandInfo("topics", "", "List Kafka topics (via AI)"),
         new CommandInfo("sql", "<query>", "Run Flink SQL (via AI)"),
         new CommandInfo("quit", "", "Exit the application")

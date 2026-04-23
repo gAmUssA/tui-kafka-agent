@@ -34,16 +34,18 @@ public class AgentApp {
             }
         }
 
-        // Build AI assistant (with MCP tools if auto-connected)
-        AgentAssistant assistant;
-        if (mcpBridge != null && mcpBridge.isConnected()) {
-            assistant = AgentFactory.create(config, mcpBridge.getToolProvider());
-        } else {
-            assistant = AgentFactory.create(config);
-        }
-
-        // Build TUI
+        // Build TUI model first so we can grab its session-scoped UsageTracker
+        // and register it on the initial assistant. Otherwise the listener
+        // would only attach on the first /model rebuild — first request misses.
         AgentModel model = new AgentModel();
+        var usageTracker = model.getUsageTracker();
+
+        // Build AI assistant (with MCP tools if auto-connected, with usage tracker always)
+        var toolProvider = (mcpBridge != null && mcpBridge.isConnected())
+                ? mcpBridge.getToolProvider()
+                : null;
+        AgentAssistant assistant = AgentFactory.create(
+                config, toolProvider, config.getProvider(), null, false, usageTracker);
 
         // Query the actual terminal size via JLine before starting Program.
         // tui4j 0.3.3 does not reliably emit a WindowSizeMessage on startup
