@@ -44,7 +44,10 @@ anthropic:
 ollama:
   base-url: http://localhost:11434
   model: qwen2.5:7b
-  timeout-seconds: 120
+  # Per-request timeout. 10 minutes accommodates first-call model load,
+  # agentic tool loops, and verbose contexts on smaller models. Bump higher
+  # if you see "request timed out" with very large models or cold starts.
+  timeout-seconds: 600
 confluent:
   bootstrap-servers: ${CONFLUENT_BOOTSTRAP}
   api-key: ${CONFLUENT_API_KEY}

@@ -144,8 +144,11 @@ anthropic:
     budget-tokens: 2048
 ollama:
   base-url: http://localhost:11434
-  model: qwen3-coder:30b
-  timeout-seconds: 120
+  model: qwen3.5:27b
+  # Per-request timeout. Larger models (27B+) on local hardware can need
+  # several minutes per call, especially for the first request after server
+  # start (model load) and during agentic tool loops.
+  timeout-seconds: 600
 confluent:
   bootstrap-servers: ${CONFLUENT_BOOTSTRAP}
   api-key: ${CONFLUENT_API_KEY}

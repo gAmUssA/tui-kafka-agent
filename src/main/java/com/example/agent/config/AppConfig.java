@@ -96,7 +96,10 @@ public final class AppConfig {
     }
 
     public int getOllamaTimeoutSeconds() {
-        return getIntValue("ollama.timeout-seconds", 120);
+        // Default: 10 minutes. Local inference is slow under load — model
+        // load on first call, agentic tool loops issuing several round-trips,
+        // verbose contexts on small models. Per-call timeout, not per-session.
+        return getIntValue("ollama.timeout-seconds", 600);
     }
 
     // ------------------------------------------------------------------
