@@ -1,5 +1,11 @@
 # 🍺 Brewmaster Agent — Implementation Plan
 
+> **Historical (Feb 2026).** This is the original single-agent design. The app has since moved to
+> LangChain4j 1.20 with a multi-agent system (supervisor + brewmaster / confluent / flink / flinkOps
+> specialists + streaming presenter), Streamable HTTP MCP, and 58 Confluent MCP tools. Current
+> sources of truth: `README.md`, `demo/DEMO-SCRIPT.md`, `docs/agentic-migration-plan.md`.
+> The data model, the six-act storyline and the enterprise pattern mapping below are still accurate.
+
 > **Elevator pitch**: "An AI agent in your terminal that builds a smart brewery monitoring pipeline from scratch, produces sensor data, detects anomalies with Flink SQL, and saves the IPA — all through conversation."
 
 ## Overview

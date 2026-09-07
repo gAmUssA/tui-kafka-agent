@@ -1,16 +1,19 @@
 # Brewmaster Agent — Demo Script
 
-**Total time**: ~7 minutes
+**Total time**: ~10–12 minutes in agentic mode (Acts 1–3 measured; 4–6 estimated — time them at rehearsal and update)
 **Target**: Vaadin Cruise, Jfokus, Stockholm & Milan meetups
+**Mode**: multi-agent (`langchain4j-agentic`) — see "The team" below. `/agentic off` gives the original single-agent behaviour.
 
 ## Pre-flight Checklist
 
 - [ ] `ANTHROPIC_API_KEY` env var set
 - [ ] Confluent MCP server running with the HTTP transport (`server.transports: [http, sse]` in its `config.yaml`, endpoint `http://127.0.0.1:8080/mcp`). Its native Kafka module needs Node 22 — from `~/projects/ai/mcp-confluent`: `~/.nvm/versions/node/v22.22.2/bin/node dist/index.js -c config.yaml -e .env`. The old `/sse` endpoint is no longer supported by the Java client.
-- [ ] `~/.config/kafka-agent/config.yaml` copied from `docs/brewmaster-config.yaml`
+- [ ] `~/.config/kafka-agent/config.yaml` is (a symlink to) `docs/brewmaster-config.yaml` — check `agentic.enabled: true`, `anthropic.model: claude-sonnet-4-6`, `mcp.servers.confluent.url: http://localhost:8080/mcp`
+- [ ] `./gradlew shadowJar` after pulling — the launcher only builds if the JAR is missing
 - [ ] Terminal at least 120 chars wide, dark background
-- [ ] Run `/reset` if topics exist from a previous run
-- [ ] Verify no stale schemas: run `list-schemas` — `brewery-sensors-value` should not exist
+- [ ] Run `/reset` if topics exist from a previous run (it routes to `flinkOps` for statements and `confluent` for topics, tags, schemas)
+- [ ] Verify no stale schemas: ask "list the brewery schemas" — `brewery-sensors-value` should not exist
+- [ ] Verify no stale statements: ask "list the running brewery Flink statements" — none should remain
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent │ anthropic:sonnet │ agentic │ MCP: 58 tools" in the header
 - [ ] Run `/agentic` to confirm multi-agent mode is ON (set by `agentic.enabled: true` in the config); `/agentic off` switches to the single assistant for the "before/after" contrast
 
@@ -77,9 +80,11 @@ Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act
 **Wait for completion, then type:**
 > Did the alerts fire?
 
-**What happens**: Agent produces escalating readings, then consumes from `brewery-alerts` to show Flink caught the spike.
+**What happens**: First turn — `brewmaster` writes the escalating fermenter-1 readings (22 → 25 → 28 → 31 °C, ~10 s apart), `confluent` produces them. Second turn — `brewops` routes to `confluent`, which consumes `brewery-alerts`; the presenter shows the alerts Flink generated (IPA threshold is 22 °C, so all four readings should trip it once the 10-second windows close).
 
-**Talking point**: "The pipeline works. Flink detected the anomaly in real-time and generated alerts. Let's see what the agent recommends."
+**Talking point**: "The pipeline works. Flink detected the anomaly in real time and wrote alerts — the agent only read them back. Let's see what the brewmaster makes of it."
+
+**Timing note**: give Flink 20–30 s between the produce turn and "Did the alerts fire?" — window close plus the statement's checkpoint. If the consume comes back empty, ask again.
 
 ---
 
@@ -88,9 +93,9 @@ Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act
 **Type:**
 > What's the current state of all fermenters? What should we do about fermenter-1?
 
-**What happens**: Agent reads latest data, diagnoses the IPA as critical, gives actual brewing advice (fusel alcohols, diacetyl rest, Belgian Saison pivot).
+**What happens**: Two hand-offs in the other order from Act 2 — `confluent` consumes the latest `brewery-sensors` (and alerts), then `brewmaster` diagnoses: Stout and Pilsner nominal, IPA critical, fusel alcohols above 25 °C, diacetyl rest if cooling is back within 30 minutes, otherwise repitch as a Belgian Saison.
 
-**Talking point**: "It's not just a data tool — it's a domain expert. The Belgian Saison suggestion is real brewing knowledge. This is what makes AI agents powerful: combining data access with expertise."
+**Talking point**: "Same team, opposite direction: the platform specialist fetched the data, the brewmaster interpreted it. The Belgian Saison pivot is real brewing knowledge — and it came from an agent that has no tools at all."
 
 ---
 
@@ -99,10 +104,12 @@ Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act
 **Type:**
 > `The brewery just installed humidity sensors. Show me the current schema, then evolve it to add humidity_percent, and verify the new version registered.`
 
-**What happens** (three beats):
-1. Agent calls `list-schemas` — shows v1 schema (10 fields, all required)
-2. Agent produces with an updated Avro schema adding `{"name": "humidity_percent", "type": "double", "default": 0.0}` — Schema Registry accepts the backward-compatible v2
-3. Agent calls `list-schemas` again — shows v2 registered alongside v1
+**What happens** (three beats, all inside one `confluent` task; the brewmaster may be asked first for a realistic humidity reading):
+1. `confluent` calls `list-schemas` — shows v1 schema (10 fields, all required)
+2. `confluent` produces with an updated Avro schema adding `{"name": "humidity_percent", "type": "double", "default": 0.0}` — Schema Registry accepts the backward-compatible v2
+3. `confluent` calls `list-schemas` again — shows v2 registered alongside v1
+
+**Note**: the Flink statement from Act 3 keeps running through the schema change — mention it.
 
 **Talking point**: "Version 1 to version 2, validated by Schema Registry, backward-compatible because of the default value. No downtime, no breaking consumers."
 
