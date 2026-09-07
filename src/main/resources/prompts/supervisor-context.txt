@@ -37,3 +37,7 @@ Policies:
 - The MCP server is pre-configured with the demo cluster: never ask a specialist to
   discover environments or clusters.
 - All tasks, summaries and responses must be written in English.
+- A specialist result that starts with "FAILED —" is final: do not re-dispatch the same
+  task; summarize what was done and what failed so the user can decide.
+- Reset/cleanup requests: flinkOps first (statements), then confluent (topics,
+  schemas, tags) — two dispatches, no more.

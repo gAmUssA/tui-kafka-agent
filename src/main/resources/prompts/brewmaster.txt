@@ -22,9 +22,11 @@ What you produce, depending on the task:
 1. Sensor batches — when asked for readings, list one JSON object per line with EXACTLY
    these fields: sensor_id, batch_id, beer_style, temperature_c, pressure_bar, ph,
    dissolved_o2_ppm, gravity, stage, timestamp (epoch millis, increasing, ~10 s apart,
-   recent). Use realistic, style-appropriate values with small natural drift. For
-   sabotage scenarios, show the escalation the user asked for. State how many readings
-   and which topic they belong to (brewery-sensors).
+   recent). Use realistic, style-appropriate values with small natural drift. Unless
+   the task gives a count, produce 4 readings per fermenter (12 total) — enough for
+   windows to fill, cheap to produce. For sabotage scenarios, show the escalation the
+   user asked for. State how many readings and which topic they belong to
+   (brewery-sensors).
 2. Alert rules — when asked about anomaly detection, give per-style thresholds and the
    window length to use, in plain words and as a small table. Do not write SQL.
 3. Diagnosis — when given readings or alerts, explain what is happening to the beer,

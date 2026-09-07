@@ -7,6 +7,8 @@ import com.example.agent.agent.UsageTracker;
 import com.example.agent.config.AppConfig;
 import com.example.agent.tools.McpBridge;
 import dev.langchain4j.agentic.AgenticServices;
+import dev.langchain4j.agentic.agent.ErrorContext;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
@@ -34,6 +36,12 @@ import java.util.Set;
 public final class AgentSystemFactory {
 
     private static final int MAX_TOOL_ROUND_TRIPS = 12;
+    // produce-message takes ONE record per call and Act 2 produces ~12–30 readings,
+    // so the Confluent operator needs a much larger budget. Its prompt asks for
+    // parallel tool calls per response and executeToolsConcurrently() runs them
+    // together, so the budget is rarely reached in round trips, but the cap must
+    // exceed the record count or the whole turn dies (seen live at 12).
+    private static final int MAX_CONFLUENT_ROUND_TRIPS = 60;
     // A legitimate demo turn needs at most 2–3 specialist calls. A low cap bounds the
     // damage when the planner mis-routes and keeps retrying (seen: 3× flink for a delete).
     private static final int MAX_AGENT_INVOCATIONS = 4;
@@ -81,7 +89,8 @@ public final class AgentSystemFactory {
         var confluentBuilder = AgenticServices.agentBuilder(Agents.ConfluentAgent.class)
                 .chatModel(workerModel)
                 .systemMessage(Prompts.load(config, "confluent"))
-                .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS);
+                .maxToolCallingRoundTrips(MAX_CONFLUENT_ROUND_TRIPS)
+                .executeToolsConcurrently();
         if (confluentTools != null) {
             confluentBuilder.toolProvider(confluentTools);
         }
@@ -108,6 +117,10 @@ public final class AgentSystemFactory {
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY_AND_SUMMARIZATION)
                 .maxAgentsInvocations(MAX_AGENT_INVOCATIONS)
+                // A specialist blowing its tool budget (or any tool failure) must not kill
+                // the turn: hand the planner a result it can report, so the presenter
+                // tells the user what happened and what was done so far.
+                .errorHandler(AgentSystemFactory::recoverSpecialistFailure)
                 .build();
 
         // --- presenter (last ⇒ streams) --------------------------------------
@@ -161,6 +174,26 @@ public final class AgentSystemFactory {
           .append("backtick-quoted name (the statement runs in that catalog/database); never call ")
           .append("list-flink-catalogs or list-flink-databases.");
         return sb.toString();
+    }
+
+    /**
+     * Turn a specialist failure into a result string instead of an exception.
+     * The supervisor sees "confluent reported: ..." and can stop or route
+     * elsewhere; the presenter reports it honestly.
+     */
+    private static ErrorRecoveryResult recoverSpecialistFailure(ErrorContext ctx) {
+        Throwable root = ctx.exception();
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        String reason = root.getMessage() == null ? root.getClass().getSimpleName() : root.getMessage();
+        if (reason.contains("maxToolCallingRoundTrips")) {
+            reason = "stopped after exhausting its tool-call budget; the work done before that point stands, "
+                    + "but the remaining records/operations were NOT completed. Ask again for just the remainder.";
+        }
+        org.slf4j.LoggerFactory.getLogger(AgentSystemFactory.class)
+                .warn("specialist {} failed: {}", ctx.agentName(), reason);
+        return ErrorRecoveryResult.result("FAILED — " + ctx.agentName() + " " + reason);
     }
 
     /** Verbatim artifacts from this turn, appended to the presenter's input. */

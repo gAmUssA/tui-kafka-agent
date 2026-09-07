@@ -51,7 +51,7 @@ Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act
 **Type:**
 > I have 3 fermenters running — an IPA in fermenter-1, a Stout in fermenter-2, and a Pilsner in fermenter-3. Produce realistic sensor data for all of them.
 
-**What happens**: Two hand-offs. `brewmaster` generates ~30 readings as JSON lines (IPA 18-20, Stout 20-22, Pilsner 10-12 — it knows lager yeast is cold). Then `confluent` produces them; the first produce registers the Avro schema, the rest reuse it.
+**What happens**: Two hand-offs. `brewmaster` generates 12 readings (4 per fermenter) as JSON lines (IPA 18-20, Stout 20-22, Pilsner 10-12 — it knows lager yeast is cold). Then `confluent` produces them: the first produce registers the Avro schema alone, the rest go out as parallel tool calls in batches of up to 8 — watch the Activity pane fill with `⚙ produce-message` rows a batch at a time. `produce-message` takes one record per call, so ask for more readings only if you want a longer Act 2.
 
 **Talking point**: "Watch the trace: brewmaster first, confluent second. The brewing knowledge and the platform work are different agents with different tools — the brewmaster literally cannot touch Kafka. And the first message registered an Avro schema; every message after it is validated."
 
@@ -131,6 +131,8 @@ Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act
 ## Cleanup
 
 After demo, type `/reset` to delete topics and Flink jobs for next run (`brewops` routes it to `flinkOps` for the statements and `confluent` for topics, tags and schemas).
+
+Known limitation: the demo API key is **denied tag removal** (`remove-tag-from-entity` → 403) and `delete-tag` refuses while topics reference the tag, so the `brewery-pipeline` tag survives a reset. That is fine — Act 1's `add-tags-to-topic` re-tags the fresh topics. If you want a clean slate, remove the tag in the Confluent Cloud UI or grant the key `DataDiscovery`/catalog delete permission.
 
 ---
 

@@ -116,12 +116,13 @@ demo:
     brewery-sensors, brewery-alerts, and brewery-metrics.
     Then tag them all with a brewery-pipeline tag.
   reset: |
-    Delete all brewery-* topics (brewery-sensors, brewery-alerts, brewery-metrics)
-    and delete any running Flink statements related to the brewery pipeline.
-    Also remove any brewery-pipeline tags.
-    Also delete any Avro schemas (subjects) associated with the brewery topics
-    (e.g. brewery-sensors-value, brewery-alerts-value, brewery-metrics-value).
-    Confirm what was deleted.
+    Reset the brewery demo. First have flinkOps delete every Flink statement whose
+    name starts with brewery (and brewery-temp-alerts if present). Then have
+    confluent delete the topics brewery-sensors, brewery-alerts and brewery-metrics
+    and the schema subjects brewery-sensors-value, brewery-alerts-value and
+    brewery-metrics-value (permanently). Try to remove the brewery-pipeline tag; if
+    tag removal is denied, leave the tag and say so. One attempt per operation, no
+    retries. Confirm what was deleted and what was skipped.
 
 ## Multi-agent mode: supervisor + brewmaster / confluent / flink specialists + streaming presenter.
 ## Toggle at runtime with /agentic on|off. Prompts live in src/main/resources/prompts/*.txt and
