@@ -149,3 +149,10 @@ steps. `docs/agentic-migration-plan.md` is the architecture rationale, research 
 `./gradlew shadowJar` (fat JAR, `build/libs/kafka-agent.jar`), `./gradlew nativeCompile` (GraalVM,
 best effort), `./gradlew jlinkImage`. Compilation uses `-parameters`, which `langchain4j-agentic`
 needs to bind `@V` arguments by name.
+
+## License
+
+Code is [MIT](LICENSE). Bundled third-party content keeps its own license: the
+`confluent-cloud-flink-sql` skill under `src/main/resources/skills/` is Apache-2.0
+(`skills/LICENSE-confluent-agent-skills`), the `flink-sql` skill comes from the
+`gamussa/flink-sql` Tessl tile; see `skills/SOURCES.md`.
