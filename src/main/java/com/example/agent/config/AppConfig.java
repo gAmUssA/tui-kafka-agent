@@ -256,7 +256,7 @@ public final class AppConfig {
     // ------------------------------------------------------------------
 
     /**
-     * {@code tui4j} (default, single-column) or {@code tamboui} (three-panel).
+     * {@code tamboui} (default, three-panel) or {@code tui4j} (legacy single column).
      * The {@code KAFKA_AGENT_UI} environment variable overrides the config, so
      * either UI can be tried without editing the file.
      */
@@ -265,7 +265,7 @@ public final class AppConfig {
         if (env != null && !env.isBlank()) {
             return env.trim().toLowerCase();
         }
-        return getStringValue("ui.kind", "tui4j").toLowerCase();
+        return getStringValue("ui.kind", "tamboui").toLowerCase();
     }
 
     /** Wrap width for the chat pane rows in the TamboUI layout. */

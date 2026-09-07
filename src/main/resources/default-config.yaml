@@ -24,6 +24,13 @@
 # mcp:
 #   auto-connect-url: http://localhost:8080/mcp
 
+## Terminal UI: tamboui (default; Chat │ Activity panes + Prompt) or tui4j (legacy single column).
+## KAFKA_AGENT_UI=tui4j overrides at launch. Wrap widths are per-pane row widths.
+# ui:
+#   kind: tamboui
+#   chat-wrap: 92
+#   activity-wrap: 52
+
 ## Multi-agent mode (langchain4j-agentic): a supervisor routes each turn to the
 ## brewmaster / confluent / flink specialists and a presenter streams the answer.
 ## Off by default; toggle at runtime with /agentic on|off. The planner is always

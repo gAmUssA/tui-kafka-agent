@@ -250,7 +250,9 @@ public final class AgentSystemFactory {
             return ChatModelFactory.createBlocking(
                     config, Provider.ANTHROPIC, config.getAgenticPlannerModel(), false, usage);
         }
-        System.err.println("[agentic] No Anthropic key; using " + provider + " as supervisor planner (expect weaker plans).");
+        // Logged, not printed: stderr is the terminal the TUI paints on.
+        org.slf4j.LoggerFactory.getLogger(AgentSystemFactory.class)
+                .warn("No Anthropic key; using {} as supervisor planner (expect weaker plans).", provider);
         return ChatModelFactory.createBlocking(config, provider, modelOverride, false, usage);
     }
 }

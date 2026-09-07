@@ -17,11 +17,12 @@
 - [ ] Verify no stale statements: ask "list the running brewery Flink statements" — none should remain
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent │ anthropic:sonnet │ agentic │ MCP: 58 tools" in the header
 - [ ] Run `/agentic` to confirm multi-agent mode is ON (set by `agentic.enabled: true` in the config); `/agentic off` switches to the single assistant for the "before/after" contrast
-- [ ] Pick the UI: `KAFKA_AGENT_UI=tamboui ./kafka-agent` gives the three-panel layout (Chat │ Activity, Prompt) where tool calls and hand-offs stay out of the narrative — recommended for the stage once rehearsed; plain `./kafka-agent` is the single-column tui4j view. In the three-panel UI: Tab cycles panes, Enter on an Activity row opens the tool detail (the real SQL for `create-flink-statement`), Esc closes
+- [ ] `./kafka-agent` opens the three-panel layout (Chat │ Activity, Prompt): tool calls and hand-offs stay out of the narrative. Tab cycles panes, Enter on an Activity row opens the tool detail (the real SQL for `create-flink-statement`), Esc closes. `KAFKA_AGENT_UI=tui4j` brings back the single-column view if ever needed
+- [ ] Library logs go to `~/.config/kafka-agent/kafka-agent.log`, not the screen; `tail -f` it in a second pane if you want the planner's decisions live (`KAFKA_AGENT_LOG_LEVEL=info`)
 
 ## The team (agentic mode)
 
-One turn = supervisor (`brewops`) plans → specialists work → `presenter` streams the answer. Hand-offs show up as `↳ brewmaster done in 18 s` trace lines and tool boxes; Ctrl+O expands a box to show the call arguments (for `create-flink-statement`, that is the real SQL).
+One turn = supervisor (`brewops`) plans → specialists work → `presenter` streams the answer. Hand-offs and tool calls fill the **Activity** pane, one row each (`▸ brewmaster working…` → `✔ brewmaster 18 s`, `⚙ create-flink-statement (1 line)`); the **Chat** pane holds only the conversation. Tab to Activity, arrows to a row, Enter shows its arguments and result (for `create-flink-statement`, that is the real SQL).
 
 | Specialist   | Owns                                                            | Tools                                      |
 |--------------|-----------------------------------------------------------------|--------------------------------------------|
@@ -66,7 +67,7 @@ Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act
 2. `sqlAuthor` activates the `flink-sql` skill (`activate_skill`, `read_skill_resource`), runs `describe-flink-table` on `brewery-sensors` and `brewery-alerts`, and drafts a typed statement — trace shows `→ statement brewery-temp-alerts drafted`.
 3. `sqlCritic` re-DESCRIBEs and returns a typed verdict — trace shows `→ PASS` (or `→ FAIL — …` and the loop goes round again, max 3).
 4. `sqlSubmitter` calls `create-flink-statement` and polls `check-flink-statement-health` until RUNNING.
-5. `presenter` streams the outcome with the SQL verbatim. Ctrl+O on the `create-flink-statement()` box shows the exact submitted SQL.
+5. `presenter` streams the outcome with the SQL verbatim. Enter on the `⚙ create-flink-statement` Activity row shows the exact submitted SQL.
 
 **Talking point**: "Author, critic, submitter. The critic doesn't return a score or a paragraph — it returns a typed object, and the loop branches on `successful == true`. That's a compile-checked decision, not string parsing. And the author didn't have 60 lines of Flink rules in its prompt: it activated a skill and read the Confluent reference when it needed it."
 

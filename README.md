@@ -29,8 +29,11 @@ Two front ends share the same agent layer:
 
 | UI | Select with | Layout |
 |---|---|---|
-| `tui4j` (default) | `ui.kind: tui4j` | single column: chat with inline tool boxes (Ctrl+O expands) |
-| `tamboui` | `ui.kind: tamboui` or `KAFKA_AGENT_UI=tamboui ./kafka-agent` | three panels: **Chat** (you + presenter) │ **Activity** (hand-offs, tool calls, one row each; Enter opens the detail overlay, Esc closes) · **Prompt**; Tab cycles panes |
+| `tamboui` (default) | `ui.kind: tamboui` | three panels: **Chat** (you + presenter) │ **Activity** (hand-offs, tool calls, one row each; Enter opens the detail overlay, Esc closes) · **Prompt**; Tab cycles panes |
+| `tui4j` (legacy) | `ui.kind: tui4j` or `KAFKA_AGENT_UI=tui4j ./kafka-agent` | single column: chat with inline tool boxes (Ctrl+O expands) |
+
+Library logs go to `~/.config/kafka-agent/kafka-agent.log` (override with `KAFKA_AGENT_LOG`), at WARN unless
+`KAFKA_AGENT_LOG_LEVEL=info|debug` — never to the terminal the UI is painting.
 
 ## Two modes
 
