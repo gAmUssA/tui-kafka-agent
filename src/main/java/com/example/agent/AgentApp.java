@@ -6,6 +6,7 @@ import com.example.agent.agent.StreamBridge;
 import com.example.agent.config.AppConfig;
 import com.example.agent.config.McpServerConfig;
 import com.example.agent.tools.McpBridge;
+import com.example.agent.tui.AgentEventMessage;
 import com.example.agent.tui.AgentModel;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
 import org.jline.terminal.Terminal;
@@ -66,8 +67,11 @@ public class AgentApp {
         // Without this, mouse wheel works in iTerm/Terminal.app but not tmux.
         Program program = new Program(model).withAltScreen().withMouseCellMotion();
 
-        // Wire the stream bridge, config, and pre-connected MCP bridge
-        StreamBridge bridge = new StreamBridge(program, assistant);
+        // Wire the stream bridge, config, and pre-connected MCP bridge.
+        // AgentEvents are produced on LangChain4j callback threads; Program.send
+        // marshals them onto the tui4j event loop.
+        StreamBridge bridge = new StreamBridge(
+                event -> program.send(new AgentEventMessage(event)), assistant);
         model.setStreamBridge(bridge);
         model.setAppConfig(config);
         if (mcpBridge != null) {

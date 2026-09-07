@@ -1,6 +1,7 @@
 package com.example.agent.tui;
 
 import com.example.agent.agent.AgentAssistant;
+import com.example.agent.agent.AgentEvent;
 import com.example.agent.agent.AgentFactory;
 import com.example.agent.agent.ModelSwitcher;
 import com.example.agent.agent.OllamaModelDiscovery;
@@ -47,6 +48,12 @@ public class AgentModel implements Model {
   private boolean isStreaming;
   private boolean isToolExecuting;
   private String currentToolName;
+  /** Name of the agent currently working, shown next to the spinner; null when idle. */
+  private String currentAgentName;
+  /** Stack of agents that have started but not finished (sub-agents nest). */
+  private final List<String> activeAgents = new ArrayList<>();
+  /** Agent name StreamBridge uses for the single, non-agentic assistant. */
+  private static final String SINGLE_ASSISTANT = "assistant";
   private StringBuilder currentResponse;
   private Provider activeProvider;
   private String activeModel;
@@ -162,61 +169,8 @@ public class AgentModel implements Model {
 
   @Override
   public UpdateResult<? extends Model> update(Message msg) {
-    // Handle tool executing
-    if (msg instanceof ToolExecutingMessage(String toolName)) {
-      isToolExecuting = true;
-      currentToolName = toolName;
-      refreshViewport();
-      return UpdateResult.from(this, spinner.init());
-    }
-
-    // Handle tool completion — buffer results until stream completes
-    if (msg instanceof ToolCompleteMessage(String toolName, String result1)) {
-      isToolExecuting = false;
-      currentToolName = null;
-      pendingToolResults.add(ChatEntry.tool(toolName, result1));
-      refreshViewport();
-      return UpdateResult.from(this);
-    }
-
-    // Handle streaming tokens
-    if (msg instanceof StreamTokenMessage(String token)) {
-      if (currentResponse == null) {
-        currentResponse = new StringBuilder();
-      }
-      currentResponse.append(token);
-      refreshViewport();
-      return UpdateResult.from(this);
-    }
-
-    // Handle stream completion
-    if (msg instanceof StreamCompleteMessage(String response)) {
-      isStreaming = false;
-      if (!response.isBlank()) {
-        chatHistory.add(ChatEntry.agent(response));
-      }
-      // Flush buffered tool results AFTER the agent response
-      chatHistory.addAll(pendingToolResults);
-      pendingToolResults.clear();
-      currentResponse = null;
-      textarea.focus();
-      refreshViewport();
-      return UpdateResult.from(this);
-    }
-
-    // Handle errors
-    if (msg instanceof ErrorMessage(String error)) {
-      isStreaming = false;
-      isToolExecuting = false;
-      currentToolName = null;
-      currentResponse = null;
-      // Flush any buffered tool results so they're not lost
-      chatHistory.addAll(pendingToolResults);
-      pendingToolResults.clear();
-      chatHistory.add(ChatEntry.error(error));
-      textarea.focus();
-      refreshViewport();
-      return UpdateResult.from(this);
+    if (msg instanceof AgentEventMessage(AgentEvent event)) {
+      return onAgentEvent(event);
     }
 
     if (msg instanceof KeyPressMessage keyMsg) {
@@ -293,7 +247,7 @@ public class AgentModel implements Model {
           }
 
           // Regular chat message — currentResponse lazily initialized
-          // by the StreamTokenMessage handler on first token.
+          // by the AgentEvent.Token handler on first token.
           chatHistory.add(ChatEntry.user(text));
           textarea.blur();
           isStreaming = true;
@@ -354,6 +308,100 @@ public class AgentModel implements Model {
     updateSuggestions();
 
     return UpdateResult.from(this, result.command());
+  }
+
+  /**
+   * Single entry point for everything the agent layer reports. Exhaustive over
+   * the sealed {@link AgentEvent} hierarchy so a new event type is a compile
+   * error here rather than a silently ignored message.
+   */
+  private UpdateResult<? extends Model> onAgentEvent(AgentEvent event) {
+    switch (event) {
+      case AgentEvent.AgentStarted(String agent) -> {
+        currentAgentName = agent;
+        activeAgents.add(agent);
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+      case AgentEvent.AgentFinished(String agent, Object output, long durationMs) -> {
+        activeAgents.remove(agent);
+        currentAgentName = activeAgents.isEmpty() ? null : activeAgents.getLast();
+        // The single assistant finishing is the turn itself; sub-agents get a trace line.
+        if (!SINGLE_ASSISTANT.equals(agent)) {
+          pendingToolResults.add(ChatEntry.tool(
+              "↳ " + agent + " done in " + formatDuration(durationMs)));
+        }
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+      case AgentEvent.ToolStarted(String agent, String tool, String arguments) -> {
+        isToolExecuting = true;
+        currentToolName = tool;
+        // The model often narrates ("Let me check...") before calling a tool and then
+        // continues after it; separate the two round-trips so they don't run together.
+        if (currentResponse != null && !currentResponse.isEmpty()
+            && currentResponse.charAt(currentResponse.length() - 1) != '\n') {
+          currentResponse.append("\n\n");
+        }
+        refreshViewport();
+        return UpdateResult.from(this, spinner.init());
+      }
+      case AgentEvent.ToolFinished(String agent, String tool, String result) -> {
+        isToolExecuting = false;
+        currentToolName = null;
+        // Buffer tool results until the answer completes so they render after it.
+        pendingToolResults.add(ChatEntry.tool(tool, result));
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+      case AgentEvent.Token(String text) -> {
+        if (currentResponse == null) {
+          currentResponse = new StringBuilder();
+        }
+        currentResponse.append(text);
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+      case AgentEvent.Completed(String fullText) -> {
+        isStreaming = false;
+        isToolExecuting = false;
+        currentToolName = null;
+        currentAgentName = null;
+        activeAgents.clear();
+        if (!fullText.isBlank()) {
+          chatHistory.add(ChatEntry.agent(fullText));
+        }
+        flushPendingToolResults();
+        currentResponse = null;
+        textarea.focus();
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+      case AgentEvent.Failed failed -> {
+        isStreaming = false;
+        isToolExecuting = false;
+        currentToolName = null;
+        currentAgentName = null;
+        activeAgents.clear();
+        currentResponse = null;
+        flushPendingToolResults();
+        String where = (failed.agent() == null || SINGLE_ASSISTANT.equals(failed.agent()))
+            ? "" : "[" + failed.agent() + "] ";
+        chatHistory.add(ChatEntry.error(where + failed.message()));
+        textarea.focus();
+        refreshViewport();
+        return UpdateResult.from(this);
+      }
+    }
+  }
+
+  private void flushPendingToolResults() {
+    chatHistory.addAll(pendingToolResults);
+    pendingToolResults.clear();
+  }
+
+  private static String formatDuration(long ms) {
+    return ms < 1000 ? ms + " ms" : String.format("%.1f s", ms / 1000.0);
   }
 
   @Override
@@ -601,7 +649,7 @@ public class AgentModel implements Model {
       return;
     }
     // Send as AI request — the AI has the MCP tools to list topics.
-    // currentResponse initialized lazily by StreamTokenMessage handler.
+    // currentResponse initialized lazily by the AgentEvent.Token handler.
     textarea.blur();
     isStreaming = true;
     streamBridge.sendMessage("List all my Kafka topics.");
@@ -680,10 +728,13 @@ public class AgentModel implements Model {
       sb.append("\n\n");
     }
 
-    // Show spinner during tool execution
+    // Show spinner during tool execution (prefixed with the sub-agent name once
+    // the agentic system is in place; the single assistant stays unprefixed)
     if (isToolExecuting && currentToolName != null) {
+      String who = (currentAgentName == null || SINGLE_ASSISTANT.equals(currentAgentName))
+          ? "" : currentAgentName + " → ";
       sb.append("  ").append(spinner.view())
-          .append(Theme.SPINNER_TEXT.render(" Calling " + currentToolName + "()..."))
+          .append(Theme.SPINNER_TEXT.render(" " + who + "Calling " + currentToolName + "()..."))
           .append("\n\n");
     }
     // Show partial response while streaming (with live markdown rendering)
