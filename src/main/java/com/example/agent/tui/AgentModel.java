@@ -55,6 +55,7 @@ public class AgentModel implements Model {
   private boolean isStreaming;
   private boolean isToolExecuting;
   private String currentToolName;
+  private String currentToolArgs;
   /** Name of the agent currently working, shown next to the spinner; null when idle. */
   private String currentAgentName;
   /** Stack of agents that have started but not finished (sub-agents nest). */
@@ -336,13 +337,14 @@ public class AgentModel implements Model {
         refreshViewport();
         return UpdateResult.from(this);
       }
-      case AgentEvent.AgentFinished(String agent, Object output, long durationMs) -> {
+      case AgentEvent.AgentFinished(String agent, Object output, long durationMs, String summary) -> {
         activeAgents.remove(agent);
         currentAgentName = activeAgents.isEmpty() ? null : activeAgents.getLast();
         // The single assistant finishing is the turn itself; sub-agents get a trace line.
         if (!SINGLE_ASSISTANT.equals(agent)) {
+          String verdict = (summary == null || summary.isBlank()) ? "" : " → " + summary;
           pendingToolResults.add(ChatEntry.tool(
-              "↳ " + agent + " done in " + formatDuration(durationMs)));
+              "↳ " + agent + " done in " + formatDuration(durationMs) + verdict));
         }
         refreshViewport();
         return UpdateResult.from(this);
@@ -350,6 +352,7 @@ public class AgentModel implements Model {
       case AgentEvent.ToolStarted(String agent, String tool, String arguments) -> {
         isToolExecuting = true;
         currentToolName = tool;
+        currentToolArgs = arguments;
         // The model often narrates ("Let me check...") before calling a tool and then
         // continues after it; separate the two round-trips so they don't run together.
         if (currentResponse != null && !currentResponse.isEmpty()
@@ -363,7 +366,12 @@ public class AgentModel implements Model {
         isToolExecuting = false;
         currentToolName = null;
         // Buffer tool results until the answer completes so they render after it.
-        pendingToolResults.add(ChatEntry.tool(tool, result));
+        // Keep the arguments: for create-flink-statement they ARE the demo (the SQL).
+        String args = currentToolArgs;
+        currentToolArgs = null;
+        boolean meaningfulArgs = args != null && args.strip().length() > 2;   // not "{}"
+        String content = meaningfulArgs ? "args: " + args + "\n---\n" + result : result;
+        pendingToolResults.add(ChatEntry.tool(tool, content));
         refreshViewport();
         return UpdateResult.from(this);
       }

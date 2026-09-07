@@ -26,6 +26,7 @@ public final class Agents {
     public static final String BREWMASTER = "brewmaster";
     public static final String CONFLUENT = "confluent";
     public static final String FLINK = "flink";
+    public static final String FLINK_OPS = "flinkOps";
     public static final String SUPERVISOR = "brewops";
     public static final String PRESENTER = "presenter";
     public static final String ROOT = "brewery";
@@ -52,17 +53,29 @@ public final class Agents {
         String operate(@V("task") String task);
     }
 
-    /** Flink SQL author + submitter on Confluent Cloud for Apache Flink. */
+    /**
+     * Flink SQL specialist. Composed workflow (see {@link FlinkAgents}):
+     * author → critic loop until the typed verdict passes, then submitter.
+     */
     public interface FlinkAgent {
-        @UserMessage("{{task}}")
         @Agent(name = FLINK, outputKey = "flinkResult",
                description = "Flink SQL specialist: inspects Flink tables (DESCRIBE), writes windowed "
-                       + "aggregation and anomaly-detection statements, submits them, verifies they are "
-                       + "RUNNING and fixes failures. Needs the thresholds and source/sink topics in the task.")
+                       + "aggregation and anomaly-detection statements, has them reviewed, submits them "
+                       + "and verifies they are RUNNING. Needs the thresholds, window length and "
+                       + "source/sink topics in the task.")
         String build(@V("task") String task);
     }
 
-    /** LLM-planned coordinator over the three specialists. */
+    /** Manages statements that already exist: list, status, health, exceptions, delete. */
+    public interface FlinkOpsAgent {
+        @UserMessage("{{task}}")
+        @Agent(name = FLINK_OPS, outputKey = "flinkOpsResult",
+               description = "Flink operations: lists running statements, reads their status, health, "
+                       + "exceptions and profiles, and deletes statements by name. Does NOT write SQL.")
+        String operate(@V("task") String task);
+    }
+
+    /** LLM-planned coordinator over the specialists. */
     public interface BrewOpsSupervisor {
         @Agent(name = SUPERVISOR, outputKey = "supervisorResult",
                description = "Coordinates brewmaster, confluent and flink specialists to fulfil a request.")

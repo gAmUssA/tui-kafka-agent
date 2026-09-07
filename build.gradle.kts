@@ -35,6 +35,8 @@ dependencies {
     implementation("dev.langchain4j:langchain4j-mcp:1.20.0-beta30")
     // Multi-agent orchestration (supervisor, sequence, loop) — same beta train as MCP
     implementation("dev.langchain4j:langchain4j-agentic:1.20.0-beta30")
+    // Agent Skills (SKILL.md with progressive disclosure) — the flink-sql skill lives in resources/skills
+    implementation("dev.langchain4j:langchain4j-skills:1.20.0-beta30")
 
     // Configuration
     implementation("org.yaml:snakeyaml:2.2")

@@ -19,8 +19,15 @@ public sealed interface AgentEvent {
     /** A sub-agent (or the single assistant) started working on the turn. */
     record AgentStarted(String agent) implements AgentEvent { }
 
-    /** A sub-agent finished; {@code output} may be null for streaming agents. */
-    record AgentFinished(String agent, Object output, long durationMs) implements AgentEvent { }
+    /**
+     * A sub-agent finished; {@code output} may be null for streaming agents.
+     * {@code summary} is an optional one-liner for the trace (e.g. a critic's verdict).
+     */
+    record AgentFinished(String agent, Object output, long durationMs, String summary) implements AgentEvent {
+        public AgentFinished(String agent, Object output, long durationMs) {
+            this(agent, output, durationMs, null);
+        }
+    }
 
     /** A tool call is about to execute. {@code agent} may be null when unknown. */
     record ToolStarted(String agent, String tool, String arguments) implements AgentEvent { }

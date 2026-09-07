@@ -28,6 +28,25 @@ final class ToolScopes {
     /** Kafka, Schema Registry, tags. */
     static final Predicate<String> CONFLUENT = CONFLUENT_TOOLS::contains;
 
-    /** Everything Flink: statements, tables, catalogs, health, exceptions. */
-    static final Predicate<String> FLINK = name -> name.contains("flink");
+    private static final Set<String> FLINK_READ_TOOLS = Set.of(
+            "list-flink-catalogs", "list-flink-databases", "list-flink-tables",
+            "describe-flink-table", "get-flink-table-info", "list-flink-statements");
+
+    private static final Set<String> FLINK_SUBMIT_TOOLS = Set.of(
+            "create-flink-statement", "read-flink-statement",
+            "get-flink-statement-exceptions", "check-flink-statement-health");
+
+    private static final Set<String> FLINK_OPS_TOOLS = Set.of(
+            "list-flink-statements", "read-flink-statement", "delete-flink-statements",
+            "get-flink-statement-exceptions", "check-flink-statement-health",
+            "detect-flink-statement-issues", "get-flink-statement-profile");
+
+    /** Inspect tables and catalogs only — for the SQL author and critic. */
+    static final Predicate<String> FLINK_READ = FLINK_READ_TOOLS::contains;
+
+    /** Submit one approved statement and confirm it runs — for the submitter. */
+    static final Predicate<String> FLINK_SUBMIT = FLINK_SUBMIT_TOOLS::contains;
+
+    /** Manage existing statements — for the flinkOps specialist. */
+    static final Predicate<String> FLINK_OPS = FLINK_OPS_TOOLS::contains;
 }

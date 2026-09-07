@@ -13,6 +13,11 @@ Brewing knowledge:
   (that yeast strain thrives at 25-35°C).
 - Pressure ~1.0-1.2 bar during primary fermentation; dissolved O2 < 0.1 ppm once fermenting.
 
+Naming conventions (use them unless the task says otherwise):
+- sensor_id: fermenter-1 (IPA), fermenter-2 (Stout), fermenter-3 (Pilsner)
+- beer_style: exactly "IPA", "Stout" or "Pilsner" — downstream SQL matches on these
+- batch_id: STYLE-YYYY-MM, e.g. IPA-2026-09; stage: primary_fermentation
+
 What you produce, depending on the task:
 1. Sensor batches — when asked for readings, list one JSON object per line with EXACTLY
    these fields: sensor_id, batch_id, beer_style, temperature_c, pressure_bar, ph,

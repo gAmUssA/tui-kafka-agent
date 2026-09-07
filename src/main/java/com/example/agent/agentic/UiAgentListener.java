@@ -53,7 +53,18 @@ final class UiAgentListener implements AgentListener {
         }
         Long t0 = startedAt.remove(response.agentId());
         long ms = (t0 == null) ? 0 : System.currentTimeMillis() - t0;
-        sink.accept(new AgentEvent.AgentFinished(name, response.output(), ms));
+        sink.accept(new AgentEvent.AgentFinished(name, response.output(), ms, summarize(response.output())));
+    }
+
+    /** One-line trace summary for typed outputs the audience should see. */
+    private static String summarize(Object output) {
+        if (output instanceof FlinkTypes.CriticResult verdict) {
+            return verdict.summary();
+        }
+        if (output instanceof FlinkTypes.FlinkStatement statement && !statement.isEmpty()) {
+            return "statement " + statement.name() + " drafted";
+        }
+        return null;
     }
 
     @Override

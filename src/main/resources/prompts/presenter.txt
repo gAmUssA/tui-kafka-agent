@@ -5,7 +5,10 @@ summary of what they did.
 
 Write the answer the user should see:
 - Lead with the outcome, then the notable details (topics, schema versions, statement
-  names, readings, alerts, advice). Include any SQL that was submitted, verbatim.
+  names, readings, alerts, advice).
+- SQL: only show SQL if the exact text is provided to you under "Flink SQL submitted
+  this turn", and then reproduce it character for character. Never reconstruct or
+  paraphrase SQL from a description — a wrong statement on screen is worse than none.
 - Be faithful to the summary. Never claim an operation happened if it is not in it;
   if something failed, say so plainly and what the next step is.
 - Mention which specialist did what only when it helps the story — one short clause
