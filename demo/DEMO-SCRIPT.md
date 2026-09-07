@@ -8,7 +8,8 @@
 
 - [ ] `ANTHROPIC_API_KEY` env var set
 - [ ] Confluent MCP server running with the HTTP transport (`server.transports: [http, sse]` in its `config.yaml`, endpoint `http://127.0.0.1:8080/mcp`). Its native Kafka module needs Node 22 — from `~/projects/ai/mcp-confluent`: `~/.nvm/versions/node/v22.22.2/bin/node dist/index.js -c config.yaml -e .env`. The old `/sse` endpoint is no longer supported by the Java client.
-- [ ] `~/.config/kafka-agent/config.yaml` is (a symlink to) `docs/brewmaster-config.yaml` — check `agentic.enabled: true`, `anthropic.model: claude-sonnet-4-6`, `mcp.servers.confluent.url: http://localhost:8080/mcp`
+- [ ] `~/.config/kafka-agent/config.yaml` is (a symlink to) `docs/brewmaster-config.yaml` — check `agentic.enabled: true`, `anthropic.model: claude-sonnet-4-6`, `mcp.servers.confluent.url: http://localhost:8080/mcp`, and `confluent.flink.catalog-name` / `database-name` = the environment and cluster **display names** (Flink catalogs are not IDs); without them every DESCRIBE fails once and the Flink agents go hunting
+- [ ] In the MCP server's `.env`, set `FLINK_CATALOG_NAME` / `FLINK_DATABASE_NAME` to the same display names so the server's own default resolves too
 - [ ] `./gradlew shadowJar` after pulling — the launcher only builds if the JAR is missing
 - [ ] Terminal at least 120 chars wide, dark background
 - [ ] Run `/reset` if topics exist from a previous run (it routes to `flinkOps` for statements and `confluent` for topics, tags, schemas)
@@ -138,7 +139,8 @@ After demo, type `/reset` to delete topics and Flink jobs for next run (`brewops
 | MCP connection fails    | `/mcp <url>` to reconnect manually                                             |
 | Flink SQL error         | Let the agent self-correct — this is actually a good demo moment               |
 | Agent hallucinates tool | Say "That tool doesn't exist, use the available MCP tools"                     |
-| Supervisor routes wrong  | Re-ask naming the specialist ("ask the flink specialist to…"); worst case `/agentic off` and continue single-mode |
+| Supervisor routes wrong  | Re-ask naming the specialist ("ask flinkOps to…"). The authoring workflow refuses non-authoring tasks (returns NOT-APPLICABLE), so a mis-routed delete no longer creates a statement. Worst case `/agentic off` and continue single-mode |
+| A turn runs away        | There is no cancel yet: Enter is ignored while a turn runs. `/quit` (or Ctrl+C) kills it; relaunch — the MCP server keeps running |
 | Critic loops 3× and fails | Ask `flinkOps` for the statement exceptions, or say "submit it anyway" — the story survives |
 | Slow response           | Talk about prompt caching: "First turn is slower, subsequent turns are cached" |
 | Topics already exist    | `/reset` then start over                                                       |

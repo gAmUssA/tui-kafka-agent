@@ -84,7 +84,10 @@ mcp:
 ```
 
 Prompts: `src/main/resources/prompts/{brewmaster,confluent,sql-author,sql-critic,sql-submitter,flink-ops,presenter,supervisor-context}.txt`.
-Skills: `src/main/resources/skills/flink-sql/` (from the `gamussa/flink-sql` Tessl tile), loaded with `langchain4j-skills`.
+Skills (`src/main/resources/skills/`, loaded with `langchain4j-skills`, available to the Flink author and critic):
+`confluent-cloud-flink-sql` from Confluent's official [agent-skills](https://github.com/confluentinc/agent-skills)
+repo (dialect traps, reserved words, CC troubleshooting) and `flink-sql` from the `gamussa/flink-sql` Tessl tile.
+Refresh with `./scripts/vendor-skills.sh [sha]`; see `skills/SOURCES.md` for pins and licenses.
 
 ## Code map
 

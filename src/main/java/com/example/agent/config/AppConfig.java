@@ -154,6 +154,21 @@ public final class AppConfig {
         return getStringValue("confluent.flink.environment-id", "");
     }
 
+    /**
+     * Flink catalog name (= Confluent Cloud environment display name) the agents
+     * should pass to table tools, or {@code null} to rely on the MCP server default.
+     */
+    public String getFlinkCatalogName() {
+        String v = getStringValue("confluent.flink.catalog-name", "");
+        return v.isBlank() ? null : v;
+    }
+
+    /** Flink database name (= Kafka cluster display name), or {@code null}. */
+    public String getFlinkDatabaseName() {
+        String v = getStringValue("confluent.flink.database-name", "");
+        return v.isBlank() ? null : v;
+    }
+
     public String getFlinkOrgId() {
         return getStringValue("confluent.flink.org-id", "");
     }

@@ -69,3 +69,7 @@ confluent:
   flink:
     environment-id: ${FLINK_ENV_ID}
     org-id: ${CONFLUENT_ORG_ID}
+    # Optional but recommended in agentic mode: catalog = environment display name,
+    # database = Kafka cluster display name, passed by the Flink agents to table lookups.
+    # catalog-name: my-environment
+    # database-name: my-cluster

@@ -34,7 +34,9 @@ import java.util.Set;
 public final class AgentSystemFactory {
 
     private static final int MAX_TOOL_ROUND_TRIPS = 12;
-    private static final int MAX_AGENT_INVOCATIONS = 8;
+    // A legitimate demo turn needs at most 2–3 specialist calls. A low cap bounds the
+    // damage when the planner mis-routes and keeps retrying (seen: 3× flink for a delete).
+    private static final int MAX_AGENT_INVOCATIONS = 4;
     private static final int MAX_VERIFY_ITERATIONS = 3;
     private static final int MEMORY_WINDOW = 30;
 
@@ -101,7 +103,7 @@ public final class AgentSystemFactory {
         Agents.BrewOpsSupervisor supervisor = AgenticServices.supervisorBuilder(Agents.BrewOpsSupervisor.class)
                 .chatModel(plannerModel)
                 .chatMemoryProvider(id -> MessageWindowChatMemory.withMaxMessages(MEMORY_WINDOW))
-                .subAgents(brewmaster, confluent, flink, flinkOps)
+                .subAgents(brewmaster, confluent, flinkOps, flink)
                 .supervisorContext(Prompts.load(config, "supervisor-context"))
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
                 .contextGenerationStrategy(SupervisorContextStrategy.CHAT_MEMORY_AND_SUMMARIZATION)
@@ -133,6 +135,32 @@ public final class AgentSystemFactory {
                 .listener(listener)
                 .listener(monitor)
                 .build();
+    }
+
+    /**
+     * Where the Flink tables live. Confluent Cloud Flink names catalogs after the
+     * environment and databases after the Kafka cluster (display names, not IDs);
+     * when the MCP server's default resolves to IDs, a bare table name fails and the
+     * agents waste calls discovering the right qualification.
+     */
+    private static String flinkLocationHint(AppConfig config) {
+        String catalog = config.getFlinkCatalogName();
+        String database = config.getFlinkDatabaseName();
+        if (catalog == null && database == null) {
+            return "";
+        }
+        var sb = new StringBuilder("\n\nTable location (mandatory): pass ");
+        if (catalog != null) {
+            sb.append("catalogName=\"").append(catalog).append("\" ");
+        }
+        if (database != null) {
+            sb.append("databaseName=\"").append(database).append("\" ");
+        }
+        sb.append("to every describe-flink-table / get-flink-table-info / list-flink-tables call, ")
+          .append("with the bare topic name as tableName. In SQL, refer to tables by their bare ")
+          .append("backtick-quoted name (the statement runs in that catalog/database); never call ")
+          .append("list-flink-catalogs or list-flink-databases.");
+        return sb.toString();
     }
 
     /** Verbatim artifacts from this turn, appended to the presenter's input. */
@@ -171,16 +199,18 @@ public final class AgentSystemFactory {
             authoringTools.add(readTools);
         }
 
+        String flinkLocation = flinkLocationHint(config);
+
         FlinkAgents.SqlAuthor author = AgenticServices.agentBuilder(FlinkAgents.SqlAuthor.class)
                 .chatModel(workerModel)
-                .systemMessage(Prompts.load(config, "sql-author") + skillCatalogue)
+                .systemMessage(Prompts.load(config, "sql-author") + flinkLocation + skillCatalogue)
                 .toolProviders(authoringTools)
                 .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS)
                 .build();
 
         FlinkAgents.SqlCritic critic = AgenticServices.agentBuilder(FlinkAgents.SqlCritic.class)
                 .chatModel(workerModel)
-                .systemMessage(Prompts.load(config, "sql-critic") + skillCatalogue)
+                .systemMessage(Prompts.load(config, "sql-critic") + flinkLocation + skillCatalogue)
                 .toolProviders(authoringTools)
                 .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS)
                 .build();

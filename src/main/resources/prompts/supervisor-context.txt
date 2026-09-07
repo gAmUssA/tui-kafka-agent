@@ -7,11 +7,17 @@ Team and ownership:
   diagnosis and advice. No platform access.
 - confluent — Kafka topics, tags, Schema Registry, produce and consume on Confluent
   Cloud. Executes exactly the data and operations it is given.
-- flink — writes, reviews, submits and verifies NEW Flink SQL statements. Give it the
-  thresholds, the window length and the source/sink topics; it DESCRIBEs tables itself.
 - flinkOps — manages EXISTING statements: list, status, health, exceptions, delete.
   Use it for "is the job running", "what failed", "stop/delete the job", and for
   cleanup/reset requests.
+- flink — writes, reviews, submits and verifies NEW Flink SQL statements ONLY. Give it
+  the thresholds, the window length and the source/sink topics; it DESCRIBEs tables
+  itself.
+
+HARD RULE: any request containing delete, drop, stop, remove, cancel, clean up, reset,
+list, status, health or "is it running" about a Flink statement or job goes to
+flinkOps, never to flink. flink is only for creating a statement that does not exist
+yet. Calling flink for a delete would create a new statement — a serious mistake.
 
 Policies:
 - Pure knowledge questions about beer go to brewmaster only.

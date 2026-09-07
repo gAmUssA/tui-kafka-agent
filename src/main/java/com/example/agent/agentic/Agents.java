@@ -59,10 +59,11 @@ public final class Agents {
      */
     public interface FlinkAgent {
         @Agent(name = FLINK, outputKey = "flinkResult",
-               description = "Flink SQL specialist: inspects Flink tables (DESCRIBE), writes windowed "
-                       + "aggregation and anomaly-detection statements, has them reviewed, submits them "
-                       + "and verifies they are RUNNING. Needs the thresholds, window length and "
-                       + "source/sink topics in the task.")
+               description = "CREATES NEW Flink SQL statements only: inspects tables (DESCRIBE), writes a "
+                       + "windowed aggregation or anomaly-detection statement, has it reviewed, submits it "
+                       + "and verifies it is RUNNING. Needs thresholds, window length and source/sink "
+                       + "topics in the task. NEVER use for deleting, stopping, listing or checking "
+                       + "existing statements — that is flinkOps.")
         String build(@V("task") String task);
     }
 
@@ -70,8 +71,9 @@ public final class Agents {
     public interface FlinkOpsAgent {
         @UserMessage("{{task}}")
         @Agent(name = FLINK_OPS, outputKey = "flinkOpsResult",
-               description = "Flink operations: lists running statements, reads their status, health, "
-                       + "exceptions and profiles, and deletes statements by name. Does NOT write SQL.")
+               description = "DELETE / STOP / LIST / STATUS of EXISTING Flink statements: lists running "
+                       + "statements, reads status, health, exceptions and profiles, deletes statements by "
+                       + "name, handles cleanup and reset. Does NOT write or submit SQL.")
         String operate(@V("task") String task);
     }
 
