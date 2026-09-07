@@ -25,6 +25,13 @@ cd ~/projects/ai/mcp-confluent
 
 The header shows `app │ provider:model │ mode │ MCP: N tools`. `mode` is `agentic` or `single`.
 
+Two front ends share the same agent layer:
+
+| UI | Select with | Layout |
+|---|---|---|
+| `tui4j` (default) | `ui.kind: tui4j` | single column: chat with inline tool boxes (Ctrl+O expands) |
+| `tamboui` | `ui.kind: tamboui` or `KAFKA_AGENT_UI=tamboui ./kafka-agent` | three panels: **Chat** (you + presenter) │ **Activity** (hand-offs, tool calls, one row each; Enter opens the detail overlay, Esc closes) · **Prompt**; Tab cycles panes |
+
 ## Two modes
 
 | Mode | What runs on a turn | When |

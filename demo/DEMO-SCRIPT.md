@@ -17,17 +17,18 @@
 - [ ] Verify no stale statements: ask "list the running brewery Flink statements" — none should remain
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent │ anthropic:sonnet │ agentic │ MCP: 58 tools" in the header
 - [ ] Run `/agentic` to confirm multi-agent mode is ON (set by `agentic.enabled: true` in the config); `/agentic off` switches to the single assistant for the "before/after" contrast
+- [ ] Pick the UI: `KAFKA_AGENT_UI=tamboui ./kafka-agent` gives the three-panel layout (Chat │ Activity, Prompt) where tool calls and hand-offs stay out of the narrative — recommended for the stage once rehearsed; plain `./kafka-agent` is the single-column tui4j view. In the three-panel UI: Tab cycles panes, Enter on an Activity row opens the tool detail (the real SQL for `create-flink-statement`), Esc closes
 
 ## The team (agentic mode)
 
 One turn = supervisor (`brewops`) plans → specialists work → `presenter` streams the answer. Hand-offs show up as `↳ brewmaster done in 18 s` trace lines and tool boxes; Ctrl+O expands a box to show the call arguments (for `create-flink-statement`, that is the real SQL).
 
-| Specialist | Owns | Tools |
-|---|---|---|
-| `brewmaster` | brewing science: readings, thresholds, diagnosis | none |
-| `confluent` | topics, tags, Schema Registry, produce/consume | Kafka + SR tools |
-| `flink` | new statements: `sqlAuthor` → `sqlCritic` loop → `sqlSubmitter` | DESCRIBE + submit tools, `flink-sql` skill |
-| `flinkOps` | existing statements: status, health, exceptions, delete | Flink ops tools |
+| Specialist   | Owns                                                            | Tools                                      |
+|--------------|-----------------------------------------------------------------|--------------------------------------------|
+| `brewmaster` | brewing science: readings, thresholds, diagnosis                | none                                       |
+| `confluent`  | topics, tags, Schema Registry, produce/consume                  | Kafka + SR tools                           |
+| `flink`      | new statements: `sqlAuthor` → `sqlCritic` loop → `sqlSubmitter` | DESCRIBE + submit tools, `flink-sql` skill |
+| `flinkOps`   | existing statements: status, health, exceptions, delete         | Flink ops tools                            |
 
 Budget per act in agentic mode (measured): a read question ≈ $0.06 / 30 s; Act 3 ≈ $0.45 / 2.5 min. Narrate the trace while it runs.
 
@@ -134,13 +135,13 @@ After demo, type `/reset` to delete topics and Flink jobs for next run (`brewops
 
 ## If Things Go Wrong
 
-| Problem                 | Recovery                                                                       |
-|-------------------------|--------------------------------------------------------------------------------|
-| MCP connection fails    | `/mcp <url>` to reconnect manually                                             |
-| Flink SQL error         | Let the agent self-correct — this is actually a good demo moment               |
-| Agent hallucinates tool | Say "That tool doesn't exist, use the available MCP tools"                     |
-| Supervisor routes wrong  | Re-ask naming the specialist ("ask flinkOps to…"). The authoring workflow refuses non-authoring tasks (returns NOT-APPLICABLE), so a mis-routed delete no longer creates a statement. Worst case `/agentic off` and continue single-mode |
-| A turn runs away        | There is no cancel yet: Enter is ignored while a turn runs. `/quit` (or Ctrl+C) kills it; relaunch — the MCP server keeps running |
-| Critic loops 3× and fails | Ask `flinkOps` for the statement exceptions, or say "submit it anyway" — the story survives |
-| Slow response           | Talk about prompt caching: "First turn is slower, subsequent turns are cached" |
-| Topics already exist    | `/reset` then start over                                                       |
+| Problem                   | Recovery                                                                                                                                                                                                                                 |
+|---------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| MCP connection fails      | `/mcp <url>` to reconnect manually                                                                                                                                                                                                       |
+| Flink SQL error           | Let the agent self-correct — this is actually a good demo moment                                                                                                                                                                         |
+| Agent hallucinates tool   | Say "That tool doesn't exist, use the available MCP tools"                                                                                                                                                                               |
+| Supervisor routes wrong   | Re-ask naming the specialist ("ask flinkOps to…"). The authoring workflow refuses non-authoring tasks (returns NOT-APPLICABLE), so a mis-routed delete no longer creates a statement. Worst case `/agentic off` and continue single-mode |
+| A turn runs away          | There is no cancel yet: Enter is ignored while a turn runs. `/quit` (or Ctrl+C) kills it; relaunch — the MCP server keeps running                                                                                                        |
+| Critic loops 3× and fails | Ask `flinkOps` for the statement exceptions, or say "submit it anyway" — the story survives                                                                                                                                              |
+| Slow response             | Talk about prompt caching: "First turn is slower, subsequent turns are cached"                                                                                                                                                           |
+| Topics already exist      | `/reset` then start over                                                                                                                                                                                                                 |

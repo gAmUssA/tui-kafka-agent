@@ -7,6 +7,7 @@ import com.example.agent.config.McpServerConfig;
 import com.example.agent.tools.McpBridge;
 import com.example.agent.tui.AgentEventMessage;
 import com.example.agent.tui.AgentModel;
+import com.example.agent.tui2.BreweryApp;
 import com.williamcallahan.tui4j.compat.bubbletea.Program;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
@@ -32,6 +33,11 @@ public class AgentApp {
                 System.err.println("[mcp] Auto-connect failed. You can retry with /mcp in the TUI.");
                 mcpBridge = null;
             }
+        }
+
+        if ("tamboui".equals(config.getUiKind())) {
+            runTamboui(config, mcpBridge);
+            return;
         }
 
         AgentModel model = new AgentModel();
@@ -74,5 +80,19 @@ public class AgentApp {
         }
 
         program.run();
+    }
+
+    /**
+     * Three-panel TamboUI front end (chat │ activity, prompt). Same agent layer,
+     * same ConversationFactory; only the sink adapter differs.
+     */
+    private static void runTamboui(AppConfig config, McpBridge mcpBridge) {
+        BreweryApp app = new BreweryApp(config, mcpBridge, config.isAgenticEnabled());
+        System.err.println("[agent] ui: tamboui, mode: " + app.modeLabel());
+        try {
+            app.run();
+        } catch (Exception e) {
+            System.err.println("[tui] " + e.getMessage());
+        }
     }
 }

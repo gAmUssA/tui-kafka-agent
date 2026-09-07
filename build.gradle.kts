@@ -25,6 +25,18 @@ dependencies {
     // JLine FFM terminal provider for Java 21+ (macOS native terminal access)
     implementation("org.jline:jline-terminal-ffm:3.26.1")
 
+    // TamboUI (three-panel UI, selected with ui.kind: tamboui). Its JLine backend
+    // declares the uber org.jline:jline 3.25.1, which would duplicate the 3.26.1
+    // modules tui4j already brings — exclude it and let the modules serve both.
+    implementation(platform("dev.tamboui:tamboui-bom:0.4.0"))
+    implementation("dev.tamboui:tamboui-toolkit")
+    implementation("dev.tamboui:tamboui-toolkit-markdown")
+    implementation("dev.tamboui:tamboui-jline3-backend") {
+        exclude(group = "org.jline", module = "jline")
+    }
+    implementation("org.jline:jline-terminal:3.26.1")
+    implementation("org.jline:jline-reader:3.26.1")
+
     // LangChain4j core + providers (GA, aligned by the BOM)
     implementation(platform("dev.langchain4j:langchain4j-bom:1.20.0"))
     implementation("dev.langchain4j:langchain4j")
