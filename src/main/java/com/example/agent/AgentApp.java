@@ -1,8 +1,7 @@
 package com.example.agent;
 
-import com.example.agent.agent.AgentAssistant;
-import com.example.agent.agent.AgentFactory;
-import com.example.agent.agent.StreamBridge;
+import com.example.agent.agent.ConversationBridge;
+import com.example.agent.agent.ConversationFactory;
 import com.example.agent.config.AppConfig;
 import com.example.agent.config.McpServerConfig;
 import com.example.agent.tools.McpBridge;
@@ -35,18 +34,7 @@ public class AgentApp {
             }
         }
 
-        // Build TUI model first so we can grab its session-scoped UsageTracker
-        // and register it on the initial assistant. Otherwise the listener
-        // would only attach on the first /model rebuild — first request misses.
         AgentModel model = new AgentModel();
-        var usageTracker = model.getUsageTracker();
-
-        // Build AI assistant (with MCP tools if auto-connected, with usage tracker always)
-        var toolProvider = (mcpBridge != null && mcpBridge.isConnected())
-                ? mcpBridge.getToolProvider()
-                : null;
-        AgentAssistant assistant = AgentFactory.create(
-                config, toolProvider, config.getProvider(), null, false, usageTracker);
 
         // Query the actual terminal size via JLine before starting Program.
         // tui4j 0.3.3 does not reliably emit a WindowSizeMessage on startup
@@ -67,13 +55,20 @@ public class AgentApp {
         // Without this, mouse wheel works in iTerm/Terminal.app but not tmux.
         Program program = new Program(model).withAltScreen().withMouseCellMotion();
 
-        // Wire the stream bridge, config, and pre-connected MCP bridge.
         // AgentEvents are produced on LangChain4j callback threads; Program.send
-        // marshals them onto the tui4j event loop.
-        StreamBridge bridge = new StreamBridge(
-                event -> program.send(new AgentEventMessage(event)), assistant);
-        model.setStreamBridge(bridge);
+        // marshals them onto the tui4j event loop. The factory owns the
+        // session-scoped UsageTracker and AgentMonitor across rebuilds.
+        ConversationFactory factory = new ConversationFactory(
+                config, event -> program.send(new AgentEventMessage(event)), model.getUsageTracker());
+
+        boolean agentic = config.isAgenticEnabled();
+        ConversationBridge bridge = factory.create(
+                mcpBridge, config.getProvider(), null, false, agentic);
+        System.err.println("[agent] mode: " + bridge.modeLabel());
+
         model.setAppConfig(config);
+        model.setConversationFactory(factory, agentic);
+        model.setConversationBridge(bridge);
         if (mcpBridge != null) {
             model.setMcpBridge(mcpBridge);
         }

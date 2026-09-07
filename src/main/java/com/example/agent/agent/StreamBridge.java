@@ -10,9 +10,14 @@ import dev.langchain4j.service.TokenStream;
  * the same sink contract will carry {@code AgentListener} callbacks from the
  * multi-agent system without the UI changing.
  */
-public class StreamBridge {
+public class StreamBridge implements ConversationBridge {
 
     private static final String ASSISTANT_NAME = "assistant";
+
+    @Override
+    public String modeLabel() {
+        return "single";
+    }
 
     private final AgentEvent.Sink sink;
     private volatile AgentAssistant assistant;
@@ -35,6 +40,7 @@ public class StreamBridge {
      * calls as {@link AgentEvent.ToolStarted}/{@link AgentEvent.ToolFinished},
      * completion as {@link AgentEvent.Completed}, failure as {@link AgentEvent.Failed}.
      */
+    @Override
     public void sendMessage(String userInput) {
         long started = System.currentTimeMillis();
         sink.accept(new AgentEvent.AgentStarted(ASSISTANT_NAME));

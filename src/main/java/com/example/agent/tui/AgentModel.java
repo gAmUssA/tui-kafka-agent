@@ -1,13 +1,18 @@
 package com.example.agent.tui;
 
-import com.example.agent.agent.AgentAssistant;
 import com.example.agent.agent.AgentEvent;
-import com.example.agent.agent.AgentFactory;
+import com.example.agent.agent.ConversationBridge;
+import com.example.agent.agent.ConversationFactory;
 import com.example.agent.agent.ModelSwitcher;
 import com.example.agent.agent.OllamaModelDiscovery;
 import com.example.agent.agent.Provider;
-import com.example.agent.agent.StreamBridge;
 import com.example.agent.agent.UsageTracker;
+import dev.langchain4j.agentic.observability.HtmlReportGenerator;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import com.example.agent.config.AppConfig;
 import com.example.agent.tools.McpBridge;
 import com.williamcallahan.tui4j.compat.bubbles.spinner.Spinner;
@@ -42,7 +47,9 @@ public class AgentModel implements Model {
   private int width = 80;
   private int height = 24;
 
-  private StreamBridge streamBridge;
+  private ConversationBridge streamBridge;
+  private ConversationFactory conversationFactory;
+  private boolean agenticEnabled;
   private AppConfig appConfig;
   private McpBridge mcpBridge;
   private boolean isStreaming;
@@ -114,8 +121,14 @@ public class AgentModel implements Model {
     viewport.setMouseWheelDelta(3);
   }
 
-  public void setStreamBridge(StreamBridge streamBridge) {
-    this.streamBridge = streamBridge;
+  public void setConversationBridge(ConversationBridge bridge) {
+    this.streamBridge = bridge;
+  }
+
+  /** Factory used to rebuild the bridge on /model, /thinking, /mcp, /agentic, /clear. */
+  public void setConversationFactory(ConversationFactory factory, boolean agenticEnabled) {
+    this.conversationFactory = factory;
+    this.agenticEnabled = agenticEnabled;
   }
 
   public void setAppConfig(AppConfig appConfig) {
@@ -413,7 +426,8 @@ public class AgentModel implements Model {
                     ? mcpBridge.getToolCount() : 0;
     int serverCount = (mcpBridge != null) ? mcpBridge.getConnectedServers().size() : 0;
     String appName = (appConfig != null) ? appConfig.getAppName() : "kafka-agent";
-    String header = HeaderView.render(appName, activeProvider, activeModel, toolCount, serverCount, isStreaming, isToolExecuting, width);
+    String mode = (streamBridge != null) ? streamBridge.modeLabel() : "";
+    String header = HeaderView.render(appName, activeProvider, activeModel, mode, toolCount, serverCount, isStreaming, isToolExecuting, width);
     String usage = HeaderView.renderUsage(usageTracker.snapshot());
     String separator = Theme.SEPARATOR.render("─".repeat(Math.max(1, width)));
 
@@ -439,6 +453,8 @@ public class AgentModel implements Model {
       case "thinking" -> handleThinking();
       case "mcp" -> handleMcp(cmd.args());
       case "usage" -> handleUsage(cmd.args());
+      case "agentic" -> handleAgentic(cmd.args());
+      case "report" -> handleReport();
       case "topics" -> handleTopicsShortcut();
       case "sql" -> handleSqlShortcut(cmd.args());
       case "quit" -> quitRequested = true;
@@ -469,8 +485,69 @@ public class AgentModel implements Model {
 
   private void handleClear() {
     chatHistory.clear();
+    if (streamBridge != null) {
+      streamBridge.reset();   // evicts the persistent AgenticScope in agentic mode
+    }
     rebuildAssistant();
     chatHistory.add(ChatEntry.tool("Chat cleared."));
+  }
+
+  private void handleAgentic(List<String> args) {
+    if (args.isEmpty()) {
+      chatHistory.add(ChatEntry.tool("Agentic mode is " + (agenticEnabled ? "ON" : "OFF")
+          + " (supervisor + brewmaster/confluent/flink specialists + presenter).\n"
+          + "Usage: /agentic on | off"));
+      return;
+    }
+    switch (args.getFirst().toLowerCase()) {
+      case "on" -> agenticEnabled = true;
+      case "off" -> agenticEnabled = false;
+      default -> {
+        chatHistory.add(ChatEntry.error("Usage: /agentic on | off"));
+        return;
+      }
+    }
+    rebuildAssistant();
+    chatHistory.add(ChatEntry.tool("Agentic mode " + (agenticEnabled ? "ON" : "OFF")
+        + " — now using " + (streamBridge != null ? streamBridge.modeLabel() : "?") + " bridge."));
+  }
+
+  /** Write the AgentMonitor's topology + timeline report to an HTML file and open it. */
+  private void handleReport() {
+    if (conversationFactory == null) {
+      chatHistory.add(ChatEntry.error("No conversation factory wired."));
+      return;
+    }
+    var monitor = conversationFactory.monitor();
+    int runs = monitor.successfulExecutions().size() + monitor.failedExecutions().size();
+    if (runs == 0) {
+      chatHistory.add(ChatEntry.tool("No agentic executions recorded yet. Run a turn with /agentic on first."));
+      return;
+    }
+    try {
+      Path dir = Path.of(System.getProperty("java.io.tmpdir"), "kafka-agent-reports");
+      Files.createDirectories(dir);
+      String stamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+      Path file = dir.resolve("brewery-run-" + stamp + ".html");
+      HtmlReportGenerator.generateReport(monitor, file);
+      String opened = openInBrowser(file) ? " (opened in browser)" : "";
+      chatHistory.add(ChatEntry.tool("Report for " + runs + " execution(s): " + file + opened));
+    } catch (Exception e) {
+      chatHistory.add(ChatEntry.error("Could not write report: " + e.getMessage()));
+    }
+  }
+
+  private static boolean openInBrowser(Path file) {
+    try {
+      String os = System.getProperty("os.name", "").toLowerCase();
+      List<String> cmd = os.contains("mac") ? List.of("open", file.toString())
+          : os.contains("win") ? List.of("cmd", "/c", "start", "", file.toString())
+          : List.of("xdg-open", file.toString());
+      new ProcessBuilder(cmd).redirectErrorStream(true).start();
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 
   private void handleTools() {
@@ -636,11 +713,14 @@ public class AgentModel implements Model {
   }
 
   private void rebuildAssistant() {
-    if (appConfig == null) return;
-    var tp = (mcpBridge != null && mcpBridge.isConnected()) ? mcpBridge.getToolProvider() : null;
-    AgentAssistant newAssistant = AgentFactory.create(
-        appConfig, tp, activeProvider, activeModel, thinkingEnabled, usageTracker);
-    streamBridge.setAssistant(newAssistant);
+    if (appConfig == null || conversationFactory == null) return;
+    try {
+      streamBridge = conversationFactory.create(
+          mcpBridge, activeProvider, activeModel, thinkingEnabled, agenticEnabled);
+    } catch (RuntimeException e) {
+      chatHistory.add(ChatEntry.error("Could not rebuild the "
+          + (agenticEnabled ? "agentic" : "single") + " assistant: " + e.getMessage()));
+    }
   }
 
   private void handleTopicsShortcut() {

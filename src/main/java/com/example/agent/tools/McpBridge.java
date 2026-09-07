@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import com.example.agent.config.McpServerConfig;
 import dev.langchain4j.mcp.McpToolProvider;
@@ -117,6 +118,22 @@ public class McpBridge {
 
     public ToolProvider getToolProvider() {
         return toolProvider;
+    }
+
+    /**
+     * A tool provider over the same connected servers that exposes only the tools
+     * whose name passes {@code toolNameFilter}. Used to give each agentic
+     * specialist a scoped tool list (smaller prompts, better tool choice).
+     * Returns {@code null} when no server is connected.
+     */
+    public ToolProvider getToolProvider(Predicate<String> toolNameFilter) {
+        if (clients.isEmpty()) {
+            return null;
+        }
+        return McpToolProvider.builder()
+                .mcpClients(new ArrayList<>(clients.values()))
+                .filter((client, tool) -> toolNameFilter.test(tool.name()))
+                .build();
     }
 
     /**

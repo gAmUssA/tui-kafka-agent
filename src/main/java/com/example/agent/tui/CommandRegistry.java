@@ -32,6 +32,8 @@ public final class CommandRegistry {
         new CommandInfo("thinking", "", "Toggle extended thinking mode"),
         new CommandInfo("mcp", "[name] <url> | disconnect [name]", "Manage MCP servers"),
         new CommandInfo("usage", "[reset]", "Show token usage and cost; reset clears totals"),
+        new CommandInfo("agentic", "[on|off]", "Toggle multi-agent mode (supervisor + specialists)"),
+        new CommandInfo("report", "", "Write the agentic topology/timeline HTML report and open it"),
         new CommandInfo("topics", "", "List Kafka topics (via AI)"),
         new CommandInfo("sql", "<query>", "Run Flink SQL (via AI)"),
         new CommandInfo("quit", "", "Exit the application")

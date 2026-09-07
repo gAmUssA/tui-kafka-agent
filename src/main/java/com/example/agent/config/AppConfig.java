@@ -237,6 +237,34 @@ public final class AppConfig {
     }
 
     // ------------------------------------------------------------------
+    // Typed getters — Agentic mode
+    // ------------------------------------------------------------------
+
+    /** Whether the multi-agent (langchain4j-agentic) system is used instead of the single assistant. */
+    public boolean isAgenticEnabled() {
+        return getBooleanValue("agentic.enabled", false);
+    }
+
+    /**
+     * Model used by the supervisor planner. Always Anthropic (local models plan
+     * poorly); defaults to {@code anthropic.model}.
+     */
+    public String getAgenticPlannerModel() {
+        return getStringValue("agentic.planner-model", getAnthropicModel());
+    }
+
+    /**
+     * Optional per-agent prompt override ({@code agentic.prompts.<name>}), or
+     * {@code null} to use the bundled {@code prompts/<name>.txt}.
+     */
+    public String getAgenticPromptOverride(String name) {
+        Object value = getNestedValue("agentic.prompts." + name);
+        if (value == null) return null;
+        String str = value.toString();
+        return str.isBlank() ? null : str;
+    }
+
+    // ------------------------------------------------------------------
     // Typed getters — Demo commands
     // ------------------------------------------------------------------
 

@@ -123,6 +123,13 @@ demo:
     (e.g. brewery-sensors-value, brewery-alerts-value, brewery-metrics-value).
     Confirm what was deleted.
 
+## Multi-agent mode: supervisor + brewmaster / confluent / flink specialists + streaming presenter.
+## Toggle at runtime with /agentic on|off. Prompts live in src/main/resources/prompts/*.txt and
+## can be overridden here under agentic.prompts.<name>.
+agentic:
+  enabled: true
+  planner-model: claude-sonnet-4-6
+
 mcp:
  servers:
    confluent:

@@ -24,6 +24,18 @@
 # mcp:
 #   auto-connect-url: http://localhost:8080/mcp
 
+## Multi-agent mode (langchain4j-agentic): a supervisor routes each turn to the
+## brewmaster / confluent / flink specialists and a presenter streams the answer.
+## Off by default; toggle at runtime with /agentic on|off. The planner is always
+## Anthropic. Per-agent prompts can be overridden under agentic.prompts.<name>
+## (brewmaster, confluent, flink, presenter, supervisor-context).
+# agentic:
+#   enabled: true
+#   planner-model: claude-sonnet-4-6
+#   prompts:
+#     brewmaster: |
+#       ...
+
 ## Chat model provider — "anthropic" (default) or "ollama"
 provider: ollama
 

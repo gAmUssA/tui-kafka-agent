@@ -13,7 +13,7 @@ public final class HeaderView {
   private HeaderView() {
   }
 
-  public static String render(String appNameText, Provider provider, String model,
+  public static String render(String appNameText, Provider provider, String model, String modeLabel,
                               int toolCount, int serverCount,
                               boolean isStreaming, boolean isToolExecuting, int width) {
     var styled = new StringBuilder();
@@ -28,6 +28,13 @@ public final class HeaderView {
     String sepModel = " │ " + providerModel;
     styled.append(Theme.HEADER_DIM.render(sepModel));
     visibleLen += sepModel.length() + 2;
+
+    // Conversation mode (single assistant vs multi-agent) — HEADER_DIM padding(0,1) = +2
+    if (modeLabel != null && !modeLabel.isBlank()) {
+      String modeText = " │ " + modeLabel;
+      styled.append(Theme.HEADER_DIM.render(modeText));
+      visibleLen += modeText.length() + 2;
+    }
 
     // Tool count — HEADER_DIM has padding(0,1) = +2 visible chars
     if (toolCount > 0) {

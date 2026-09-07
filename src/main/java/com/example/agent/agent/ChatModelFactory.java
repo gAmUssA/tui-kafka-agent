@@ -1,6 +1,7 @@
 package com.example.agent.agent;
 
 import com.example.agent.config.AppConfig;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
@@ -33,6 +34,20 @@ public final class ChatModelFactory {
             case ANTHROPIC -> AnthropicConfig.createStreamingModel(
                     config, modelOverride, thinkingEnabled, listener);
             case OLLAMA -> OllamaConfig.createStreamingModel(config, modelOverride, listener);
+        };
+    }
+
+    /** Blocking (non-streaming) model — what agentic sub-agents and planners use. */
+    public static ChatModel createBlocking(
+            AppConfig config,
+            Provider provider,
+            String modelOverride,
+            boolean thinkingEnabled,
+            ChatModelListener listener) {
+        return switch (provider) {
+            case ANTHROPIC -> AnthropicConfig.createChatModel(
+                    config, modelOverride, thinkingEnabled, listener);
+            case OLLAMA -> OllamaConfig.createChatModel(config, modelOverride, listener);
         };
     }
 }

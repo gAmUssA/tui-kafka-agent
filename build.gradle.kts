@@ -33,6 +33,8 @@ dependencies {
     // MCP client is still a beta artifact; the BOM does not manage it — pin explicitly
     // and keep every beta on the same number as the core release (1.20.0 ↔ beta30).
     implementation("dev.langchain4j:langchain4j-mcp:1.20.0-beta30")
+    // Multi-agent orchestration (supervisor, sequence, loop) — same beta train as MCP
+    implementation("dev.langchain4j:langchain4j-agentic:1.20.0-beta30")
 
     // Configuration
     implementation("org.yaml:snakeyaml:2.2")
