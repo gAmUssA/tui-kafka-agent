@@ -399,9 +399,9 @@ anthropic:
     budget-tokens: 2048
 
 confluent:
-  mcp-server-url: https://mcp-confluent.ai-assisted.engineering/sse
-  environment-id: env-j03r6m
-  cluster-id: lkc-2oyy82
+  mcp-server-url: http://localhost:8080/mcp   # your Confluent MCP server
+  environment-id: env-xxxxxx
+  cluster-id: lkc-xxxxxx
   flink:
     compute-pool-id: lfcp-xxxxx    # needs to be in same region as cluster
     base-url: https://flink.us-east-2.aws.confluent.cloud

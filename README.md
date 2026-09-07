@@ -3,22 +3,43 @@
 A terminal AI agent for Apache Kafka and Flink on Confluent Cloud. It talks to the
 [Confluent MCP server](https://github.com/confluentinc/mcp-confluent) for tools, runs on
 [LangChain4j](https://docs.langchain4j.dev) 1.20 with the `langchain4j-agentic` multi-agent
-module, and renders in the terminal with tui4j. The bundled demo profile is the
+module, and renders in the terminal with TamboUI (three-panel) or tui4j (legacy). The bundled demo profile is the
 **Brewmaster Agent**: a brewery IoT pipeline built, monitored and sabotaged through conversation.
 
 ## Run
 
-Requirements: Java 21, an `ANTHROPIC_API_KEY`, and a running Confluent MCP server that serves
-Streamable HTTP (the SSE transport is no longer supported by the client).
+### Prerequisites
+
+| Need | Notes |
+|---|---|
+| Java 21 | `./gradlew shadowJar` builds `build/libs/kafka-agent.jar`; `./kafka-agent` launches it (needs a real TTY) |
+| `ANTHROPIC_API_KEY` | Workers can run on Ollama, the supervisor planner always uses Anthropic |
+| Confluent Cloud | A Kafka cluster, Schema Registry and a Flink compute pool the MCP server is configured for |
+| [Confluent MCP server](https://github.com/confluentinc/mcp-confluent) 1.6+ | Must serve **Streamable HTTP** (`server.transports: [http]`, endpoint `/mcp`). Its native Kafka module needs **Node 22**. The old `/sse` transport is no longer supported by the LangChain4j client |
+| Optional: [tessl](https://tessl.io) | `tessl install` restores the agent rules referenced from `AGENTS.md` (`.tessl/` is not committed) |
+
+### Environment variables
+
+The config files substitute `${VAR}` from the environment; unset variables resolve to empty.
+
+| Variable | Used for |
+|---|---|
+| `ANTHROPIC_API_KEY` | Anthropic models |
+| `FLINK_CATALOG_NAME`, `FLINK_DATABASE_NAME` | Flink catalog = environment **display name**, database = Kafka cluster **display name**. Given to the Flink agents so `DESCRIBE` works first time; set the same two in the MCP server's `.env` |
+| `CONFLUENT_BOOTSTRAP`, `CONFLUENT_API_KEY`, `CONFLUENT_API_SECRET`, `FLINK_ENV_ID`, `CONFLUENT_ORG_ID` | Referenced by the config template for future direct-client use; the MCP server holds the real credentials |
+| `KAFKA_AGENT_UI` | `tamboui` (default) or `tui4j` |
+| `KAFKA_AGENT_LOG`, `KAFKA_AGENT_LOG_LEVEL` | Log file path and level (default `~/.config/kafka-agent/kafka-agent.log`, `warn`) |
+
+### Start
 
 ```bash
-# 1. Confluent MCP server (its native Kafka module needs Node 22)
-cd ~/projects/ai/mcp-confluent
-~/.nvm/versions/node/v22.22.2/bin/node dist/index.js -c config.yaml -e .env   # config: server.transports: [http, sse]
+# 1. Confluent MCP server, from its checkout, on Node 22 (e.g. `nvm use 22`)
+node dist/index.js -c config.yaml -e .env      # config.yaml: server.transports: [http]
 
-# 2. Config: ~/.config/kafka-agent/config.yaml  (the demo profile is docs/brewmaster-config.yaml)
+# 2. Agent config: copy docs/brewmaster-config.yaml to ~/.config/kafka-agent/config.yaml
+#    (or symlink it) and point mcp.servers.confluent.url at http://localhost:8080/mcp
 
-# 3. Build and run — needs a real TTY
+# 3. Build and run in a real terminal
 ./gradlew shadowJar
 ./kafka-agent
 ```
@@ -54,7 +75,7 @@ specialists, each with its own prompt and its own scoped tool list:
 | `presenter` | streams the answer; the only streaming agent, therefore last | none |
 
 The scope is persistent per session (`@MemoryId`), so state survives between turns; `/clear` evicts it.
-Hand-offs and tool calls appear live in the chat as trace lines and collapsible tool boxes.
+Hand-offs and tool calls appear live in the Activity pane (TamboUI) or as trace lines and collapsible tool boxes (tui4j).
 
 ## Slash commands
 
@@ -72,8 +93,8 @@ Hand-offs and tool calls appear live in the chat as trace lines and collapsible 
 | `/setup`, `/reset` | demo prompts from `demo.setup` / `demo.reset` in the config |
 | `/clear`, `/quit` | clear history (and the agentic scope) / exit |
 
-Keys: `Enter` send, `Tab` accept a command suggestion, `Ctrl+O` expand/collapse tool output,
-`PgUp`/`PgDn` or mouse wheel scroll, `Esc`/`Ctrl+C` quit.
+Keys (TamboUI): `Enter` send, `Tab` cycle Prompt → Chat → Activity, arrows select an Activity row, `Enter` on it opens the detail overlay, `Esc` closes,
+`PgUp`/`PgDn` or mouse wheel scroll, `Ctrl+C` quit. Keys (tui4j): `Tab` accepts a command suggestion, `Ctrl+O` expands tool output, `Esc`/`Ctrl+C` quit.
 
 ## Configuration
 
@@ -113,7 +134,8 @@ com.example.agent
 │   ├── AgentSystemFactory    supervisor + specialists + loop + presenter wiring, tool scopes, skills
 │   └── UiAgentListener       AgentListener → AgentEvents
 ├── tools/McpBridge           MCP clients, scoped ToolProviders
-└── tui/                      tui4j Elm model, views, theme, markdown, slash commands
+├── tui2/BreweryApp           TamboUI three-panel front end (default)
+└── tui/                      tui4j Elm model, views, theme, markdown, slash commands (legacy)
 ```
 
 ## Demo

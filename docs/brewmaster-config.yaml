@@ -174,5 +174,5 @@ confluent:
     # Flink catalog = environment display name, database = Kafka cluster display name.
     # The agents pass these to every table lookup; without them the MCP server's
     # default (IDs) makes bare-name DESCRIBE fail and the agents go hunting.
-    catalog-name: current-2025-demo
-    database-name: maestro_gcp
+    catalog-name: ${FLINK_CATALOG_NAME}
+    database-name: ${FLINK_DATABASE_NAME}
