@@ -540,20 +540,20 @@ public class AgentModel implements Model {
       return;
     }
 
-    // /mcp <name> <url> → connect SSE server
+    // /mcp <name> <url> → connect Streamable HTTP server
     if (args.size() >= 2) {
       String name = args.getFirst();
       String url = args.get(1);
-      String result = mcpBridge.connectSse(name, url);
+      String result = mcpBridge.connectHttp(name, url);
       chatHistory.add(ChatEntry.tool(result));
       rebuildAssistant();
       return;
     }
 
-    // /mcp <url> → single arg, treat as SSE with auto-name
+    // /mcp <url> → single arg, treat as Streamable HTTP with auto-name
     String urlOrName = args.getFirst();
     if (urlOrName.startsWith("http")) {
-      String result = mcpBridge.connectSse("default", urlOrName);
+      String result = mcpBridge.connectHttp("default", urlOrName);
       chatHistory.add(ChatEntry.tool(result));
       rebuildAssistant();
     } else {

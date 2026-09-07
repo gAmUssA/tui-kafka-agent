@@ -199,7 +199,9 @@ public final class AppConfig {
                 String name = entry.getKey().toString();
                 if (entry.getValue() instanceof Map<?, ?> serverDef) {
                     Object typeObj = serverDef.get("type");
-                    String type = (typeObj != null) ? typeObj.toString() : "sse";
+                    String type = (typeObj != null)
+                            ? typeObj.toString()
+                            : McpServerConfig.TYPE_STREAMABLE_HTTP;
                     String url = serverDef.containsKey("url") ? serverDef.get("url").toString() : null;
 
                     List<String> command = null;
@@ -227,7 +229,8 @@ public final class AppConfig {
         if (!legacyUrl.isEmpty()) {
             System.err.println("[config] DEPRECATED: 'mcp.auto-connect-url' is deprecated. "
                     + "Use 'mcp.servers' map instead. See default-config.yaml for the new format.");
-            return Map.of("default", new McpServerConfig("sse", legacyUrl, null, Collections.emptyMap()));
+            return Map.of("default", new McpServerConfig(
+                    McpServerConfig.TYPE_STREAMABLE_HTTP, legacyUrl, null, Collections.emptyMap()));
         }
 
         return Collections.emptyMap();

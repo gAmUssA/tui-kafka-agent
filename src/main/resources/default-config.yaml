@@ -6,12 +6,14 @@
 
 ## Auto-connect to MCP servers on startup (optional)
 ## Each entry under 'servers' is a named MCP server connection.
-## Supported types: sse (HTTP SSE), stdio (subprocess)
+## Supported types: streamable-http (default; POST endpoint, usually /mcp), stdio (subprocess)
+## NOTE: the legacy SSE transport was removed from the LangChain4j MCP client in 1.19.0;
+## 'type: sse' is accepted as an alias but the server must speak Streamable HTTP.
 # mcp:
 #   servers:
 #     confluent:
-#       type: sse
-#       url: http://localhost:8080/sse
+#       type: streamable-http
+#       url: http://localhost:8080/mcp
 #     filesystem:
 #       type: stdio
 #       command: ["npx", "-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
@@ -20,7 +22,7 @@
 #
 ## Legacy single-server format (deprecated, still works):
 # mcp:
-#   auto-connect-url: http://localhost:8080/sse
+#   auto-connect-url: http://localhost:8080/mcp
 
 ## Chat model provider — "anthropic" (default) or "ollama"
 provider: ollama

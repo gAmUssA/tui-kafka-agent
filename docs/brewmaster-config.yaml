@@ -126,8 +126,8 @@ demo:
 mcp:
  servers:
    confluent:
-     type: sse
-     url: http://localhost:8080/sse
+     type: streamable-http
+     url: http://localhost:8080/mcp
 
 # Legacy single-server format (deprecated, still works):
 #mcp:
@@ -135,7 +135,7 @@ mcp:
 provider: "anthropic"
 anthropic:
   api-key: ${ANTHROPIC_API_KEY}
-  model: claude-sonnet-4-20250514
+  model: claude-sonnet-4-6
   max-tokens: 4096
   cache-system-messages: true
   cache-tools: true

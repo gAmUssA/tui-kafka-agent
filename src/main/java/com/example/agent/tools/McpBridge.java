@@ -1,5 +1,6 @@
 package com.example.agent.tools;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -11,7 +12,7 @@ import dev.langchain4j.mcp.McpToolProvider;
 import dev.langchain4j.mcp.client.DefaultMcpClient;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.client.transport.http.HttpMcpTransport;
+import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.client.transport.stdio.StdioMcpTransport;
 import dev.langchain4j.service.tool.ToolProvider;
 
@@ -57,10 +58,11 @@ public class McpBridge {
     }
 
     /**
-     * Convenience method to connect an SSE server at runtime (e.g. from /mcp command).
+     * Convenience method to connect a Streamable HTTP server at runtime (e.g. from /mcp command).
      */
-    public String connectSse(String name, String sseUrl) {
-        return connect(name, new McpServerConfig("sse", sseUrl, null, Collections.emptyMap()));
+    public String connectHttp(String name, String url) {
+        return connect(name, new McpServerConfig(
+                McpServerConfig.TYPE_STREAMABLE_HTTP, url, null, Collections.emptyMap()));
     }
 
     /**
@@ -190,12 +192,19 @@ public class McpBridge {
             return builder.build();
         }
 
-        // Default: SSE
+        // Default: Streamable HTTP. LangChain4j removed the legacy SSE transport in 1.19.0,
+        // so the server must expose a Streamable HTTP endpoint (POST, usually /mcp).
         if (config.url() == null || config.url().isBlank()) {
-            throw new IllegalArgumentException("SSE transport requires a 'url'");
+            throw new IllegalArgumentException("HTTP transport requires a 'url'");
         }
-        return HttpMcpTransport.builder()
-                .sseUrl(config.url())
+        if (config.isLegacySse() || config.url().endsWith("/sse")) {
+            System.err.println("[mcp] WARNING: 'sse' transport is no longer supported by the LangChain4j "
+                    + "MCP client (removed in 1.19.0). Connecting with Streamable HTTP to " + config.url()
+                    + " — point 'url' at the server's /mcp endpoint and use type: streamable-http.");
+        }
+        return StreamableHttpMcpTransport.builder()
+                .url(config.url())
+                .timeout(Duration.ofSeconds(60))
                 .build();
     }
 

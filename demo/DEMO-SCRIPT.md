@@ -6,7 +6,7 @@
 ## Pre-flight Checklist
 
 - [ ] `ANTHROPIC_API_KEY` env var set
-- [ ] `MCP_SERVER_URL` env var set (e.g., `https://mcp-confluent.ai-assisted.engineering/sse`)
+- [ ] Confluent MCP server running with the HTTP transport (`server.transports: [http, sse]` in its `config.yaml`, endpoint `http://127.0.0.1:8080/mcp`). Its native Kafka module needs Node 22 — from `~/projects/ai/mcp-confluent`: `~/.nvm/versions/node/v22.22.2/bin/node dist/index.js -c config.yaml -e .env`. The old `/sse` endpoint is no longer supported by the Java client.
 - [ ] `~/.config/kafka-agent/config.yaml` copied from `docs/brewmaster-config.yaml`
 - [ ] Terminal at least 120 chars wide, dark background
 - [ ] Run `/reset` if topics exist from a previous run
@@ -76,7 +76,7 @@
 ## Act 6 — "Schema Evolution" (~1.5 min)
 
 **Type:**
-> The brewery just installed humidity sensors. Show me the current schema, then evolve it to add humidity_percent, and verify the new version registered.
+> `The brewery just installed humidity sensors. Show me the current schema, then evolve it to add humidity_percent, and verify the new version registered.`
 
 **What happens** (three beats):
 1. Agent calls `list-schemas` — shows v1 schema (10 fields, all required)

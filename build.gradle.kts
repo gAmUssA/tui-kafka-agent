@@ -25,11 +25,14 @@ dependencies {
     // JLine FFM terminal provider for Java 21+ (macOS native terminal access)
     implementation("org.jline:jline-terminal-ffm:3.26.1")
 
-    // LangChain4j core + providers + MCP
-    implementation("dev.langchain4j:langchain4j:1.11.0")
-    implementation("dev.langchain4j:langchain4j-anthropic:1.11.0")
-    implementation("dev.langchain4j:langchain4j-ollama:1.11.0")
-    implementation("dev.langchain4j:langchain4j-mcp:1.11.0-beta19")
+    // LangChain4j core + providers (GA, aligned by the BOM)
+    implementation(platform("dev.langchain4j:langchain4j-bom:1.20.0"))
+    implementation("dev.langchain4j:langchain4j")
+    implementation("dev.langchain4j:langchain4j-anthropic")
+    implementation("dev.langchain4j:langchain4j-ollama")
+    // MCP client is still a beta artifact; the BOM does not manage it — pin explicitly
+    // and keep every beta on the same number as the core release (1.20.0 ↔ beta30).
+    implementation("dev.langchain4j:langchain4j-mcp:1.20.0-beta30")
 
     // Configuration
     implementation("org.yaml:snakeyaml:2.2")
@@ -40,6 +43,12 @@ dependencies {
 
 application {
     mainClass = "com.example.agent.AgentApp"
+}
+
+// Keep parameter names in bytecode: langchain4j-agentic binds @V arguments by name and
+// silently passes null without this flag.
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-parameters")
 }
 
 tasks.named<JavaExec>("run") {
