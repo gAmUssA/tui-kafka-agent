@@ -124,6 +124,13 @@ demo:
     tag removal is denied, leave the tag and say so. One attempt per operation, no
     retries. Confirm what was deleted and what was skipped.
 
+## Terminal UI. Stage profile: at 24 pt on a 1080p projector the terminal is ~133x37 cells,
+## so the two panes wrap narrower than the 92/52 desk defaults (Chat ~64% of width).
+ui:
+  kind: tamboui
+  chat-wrap: 76
+  activity-wrap: 44
+
 ## Multi-agent mode: supervisor + brewmaster / confluent / flink specialists + streaming presenter.
 ## Toggle at runtime with /agentic on|off. Prompts live in src/main/resources/prompts/*.txt and
 ## can be overridden here under agentic.prompts.<name>.

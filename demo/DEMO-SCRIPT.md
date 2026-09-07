@@ -11,7 +11,7 @@
 - [ ] `~/.config/kafka-agent/config.yaml` is (a symlink to) `docs/brewmaster-config.yaml` — check `agentic.enabled: true`, `anthropic.model: claude-sonnet-4-6`, `mcp.servers.confluent.url: http://localhost:8080/mcp`, and `confluent.flink.catalog-name` / `database-name` = the environment and cluster **display names** (Flink catalogs are not IDs); without them every DESCRIBE fails once and the Flink agents go hunting
 - [ ] In the MCP server's `.env`, set `FLINK_CATALOG_NAME` / `FLINK_DATABASE_NAME` to the same display names so the server's own default resolves too
 - [ ] `./gradlew shadowJar` after pulling — the launcher only builds if the JAR is missing
-- [ ] Terminal at least 120 chars wide, dark background
+- [ ] **Terminal font for the room** (toolkit rule: nothing under 24 pt text / 18 pt code; Kawasaki: oldest attendee's age ÷ 2 — a 50-year-old means 25 pt). On a 1080p projector a 24 pt monospace gives ~133 columns × 37 rows, which is exactly what the three-panel UI needs: set the terminal to **24 pt** (JetBrains Mono / Menlo) and use the `ui.chat-wrap: 76` / `ui.activity-wrap: 44` stage values already in `docs/brewmaster-config.yaml`. At 4K or on a 16:10 laptop mirror, 28 pt still fits. Check it from the back of the room before the audience arrives; dark background.
 - [ ] Run `/reset` if topics exist from a previous run (it routes to `flinkOps` for statements and `confluent` for topics, tags, schemas)
 - [ ] Verify no stale schemas: ask "list the brewery schemas" — `brewery-sensors-value` should not exist
 - [ ] Verify no stale statements: ask "list the running brewery Flink statements" — none should remain
