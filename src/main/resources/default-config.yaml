@@ -24,10 +24,8 @@
 # mcp:
 #   auto-connect-url: http://localhost:8080/mcp
 
-## Terminal UI: tamboui (default; Chat │ Activity panes + Prompt) or tui4j (legacy single column).
-## KAFKA_AGENT_UI=tui4j overrides at launch. Wrap widths are per-pane row widths.
+## Terminal UI (TamboUI: Chat │ Activity panes + Prompt). Wrap widths are per-pane row widths.
 # ui:
-#   kind: tamboui
 #   chat-wrap: 92
 #   activity-wrap: 52
 

@@ -1,4 +1,4 @@
 /**
- * TUI model, views, and messages — Elm Architecture components for the terminal UI.
+ * Slash-command parsing and the command registry shared by the terminal UI.
  */
 package com.example.agent.tui;

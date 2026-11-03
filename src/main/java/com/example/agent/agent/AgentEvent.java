@@ -7,9 +7,9 @@ import java.util.function.Consumer;
  * <p>
  * This is the seam between the LangChain4j side (single {@code TokenStream}
  * today, a multi-agent {@code langchain4j-agentic} system next) and whatever
- * renders it (tui4j today, TamboUI next). It deliberately has no UI imports:
- * a UI adapts events onto its own event loop, e.g. {@code program.send(...)}
- * or {@code runner.runOnRenderThread(...)}.
+ * renders it (the TamboUI front end). It deliberately has no UI imports:
+ * a UI adapts events onto its own event loop, e.g.
+ * {@code runner.runOnRenderThread(...)}.
  * <p>
  * Events are published from LangChain4j callback threads; consumers must
  * marshal onto their own thread if they need to.

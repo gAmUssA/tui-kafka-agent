@@ -505,7 +505,7 @@ public final class BreweryApp extends ToolkitApp {
     }
 
     // ------------------------------------------------------------------
-    // Slash commands (same semantics as the tui4j AgentModel)
+    // Slash commands
     // ------------------------------------------------------------------
 
     private void handleCommand(SlashCommand cmd) {
