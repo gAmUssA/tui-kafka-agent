@@ -48,6 +48,8 @@ anthropic:
   api-key: ${ANTHROPIC_API_KEY}
   model: claude-sonnet-4-6
   max-tokens: 4096
+  # Per-request timeout; the 60 s library default is too short for long specialist answers.
+  timeout-seconds: 300
   cache-system-messages: true
   cache-tools: true
   thinking:

@@ -152,6 +152,8 @@ anthropic:
   api-key: ${ANTHROPIC_API_KEY}
   model: claude-sonnet-4-6
   max-tokens: 4096
+  # The 60 s library default timed out the brewmaster's Act 5 diagnosis (large consume result, long answer).
+  timeout-seconds: 300
   cache-system-messages: true
   cache-tools: true
   thinking:

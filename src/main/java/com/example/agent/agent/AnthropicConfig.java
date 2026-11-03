@@ -5,6 +5,7 @@ import dev.langchain4j.model.anthropic.AnthropicChatModel;
 import dev.langchain4j.model.anthropic.AnthropicStreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -42,6 +43,7 @@ public final class AnthropicConfig {
         var builder = AnthropicChatModel.builder()
                 .apiKey(config.getAnthropicApiKey())
                 .modelName(modelName)
+                .timeout(Duration.ofSeconds(config.getAnthropicTimeoutSeconds()))
                 .cacheSystemMessages(config.isCacheSystemMessages())
                 .cacheTools(config.isCacheTools());
 
@@ -66,6 +68,7 @@ public final class AnthropicConfig {
         var builder = AnthropicStreamingChatModel.builder()
                 .apiKey(config.getAnthropicApiKey())
                 .modelName(modelName)
+                .timeout(Duration.ofSeconds(config.getAnthropicTimeoutSeconds()))
                 .cacheSystemMessages(config.isCacheSystemMessages())
                 .cacheTools(config.isCacheTools());
 
