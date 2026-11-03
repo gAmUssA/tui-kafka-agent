@@ -120,8 +120,8 @@ demo:
     name starts with brewery (and brewery-temp-alerts if present). Then have
     confluent delete the topics brewery-sensors, brewery-alerts and brewery-metrics
     and the schema subjects brewery-sensors-value, brewery-alerts-value and
-    brewery-metrics-value (permanently). Try to remove the brewery-pipeline tag; if
-    tag removal is denied, leave the tag and say so. One attempt per operation, no
+    brewery-metrics-value (permanently). Try to remove the brewery_pipeline tag (Confluent stores
+    brewery-pipeline with an underscore); if tag removal is denied, leave the tag and say so. One attempt per operation, no
     retries. Confirm what was deleted and what was skipped.
 
 ## Terminal UI. Stage profile: at 24 pt on a 1080p projector the terminal is ~133x37 cells,
