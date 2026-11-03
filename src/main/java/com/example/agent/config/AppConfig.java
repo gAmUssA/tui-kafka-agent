@@ -118,6 +118,14 @@ public final class AppConfig {
         return getIntValue("anthropic.max-tokens", 4096);
     }
 
+    /**
+     * Per-request timeout for Anthropic calls. LangChain4j's default is 60 s, which a
+     * non-streaming specialist call with a large tool result and a long answer can exceed.
+     */
+    public int getAnthropicTimeoutSeconds() {
+        return getIntValue("anthropic.timeout-seconds", 300);
+    }
+
     public boolean isCacheSystemMessages() {
         return getBooleanValue("anthropic.cache-system-messages", true);
     }
