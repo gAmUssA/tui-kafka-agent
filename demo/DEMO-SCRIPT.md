@@ -17,7 +17,7 @@
 - [ ] Verify no stale statements: ask "list the running brewery Flink statements" — none should remain
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent │ anthropic:sonnet │ agentic │ MCP: 58 tools" in the header
 - [ ] Run `/agentic` to confirm multi-agent mode is ON (set by `agentic.enabled: true` in the config); `/agentic off` switches to the single assistant for the "before/after" contrast
-- [ ] `./kafka-agent` opens the three-panel layout (Chat │ Activity, Prompt): tool calls and hand-offs stay out of the narrative. Tab cycles panes, Enter on an Activity row opens the tool detail (the real SQL for `create-flink-statement`), Esc closes. `KAFKA_AGENT_UI=tui4j` brings back the single-column view if ever needed
+- [ ] `./kafka-agent` opens the three-panel layout (Chat │ Activity, Prompt): tool calls and hand-offs stay out of the narrative. Tab cycles panes, Enter on an Activity row opens the tool detail (the real SQL for `create-flink-statement`), Esc closes.
 - [ ] Library logs go to `~/.config/kafka-agent/kafka-agent.log`, not the screen; `tail -f` it in a second pane if you want the planner's decisions live (`KAFKA_AGENT_LOG_LEVEL=info`)
 
 ## The team (agentic mode)

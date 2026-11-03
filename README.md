@@ -3,7 +3,7 @@
 A terminal AI agent for Apache Kafka and Flink on Confluent Cloud. It talks to the
 [Confluent MCP server](https://github.com/confluentinc/mcp-confluent) for tools, runs on
 [LangChain4j](https://docs.langchain4j.dev) 1.20 with the `langchain4j-agentic` multi-agent
-module, and renders in the terminal with TamboUI (three-panel) or tui4j (legacy). The bundled demo profile is the
+module, and renders a three-panel terminal UI with TamboUI. The bundled demo profile is the
 **Brewmaster Agent**: a brewery IoT pipeline built, monitored and sabotaged through conversation.
 
 ## Run
@@ -27,7 +27,6 @@ The config files substitute `${VAR}` from the environment; unset variables resol
 | `ANTHROPIC_API_KEY` | Anthropic models |
 | `FLINK_CATALOG_NAME`, `FLINK_DATABASE_NAME` | Flink catalog = environment **display name**, database = Kafka cluster **display name**. Given to the Flink agents so `DESCRIBE` works first time; set the same two in the MCP server's `.env` |
 | `CONFLUENT_BOOTSTRAP`, `CONFLUENT_API_KEY`, `CONFLUENT_API_SECRET`, `FLINK_ENV_ID`, `CONFLUENT_ORG_ID` | Referenced by the config template for future direct-client use; the MCP server holds the real credentials |
-| `KAFKA_AGENT_UI` | `tamboui` (default) or `tui4j` |
 | `KAFKA_AGENT_LOG`, `KAFKA_AGENT_LOG_LEVEL` | Log file path and level (default `~/.config/kafka-agent/kafka-agent.log`, `warn`) |
 
 ### Start
@@ -46,12 +45,8 @@ node dist/index.js -c config.yaml -e .env      # config.yaml: server.transports:
 
 The header shows `app │ provider:model │ mode │ MCP: N tools`. `mode` is `agentic` or `single`.
 
-Two front ends share the same agent layer:
-
-| UI | Select with | Layout |
-|---|---|---|
-| `tamboui` (default) | `ui.kind: tamboui` | three panels: **Chat** (you + presenter) │ **Activity** (hand-offs, tool calls, one row each; Enter opens the detail overlay, Esc closes) · **Prompt**; Tab cycles panes |
-| `tui4j` (legacy) | `ui.kind: tui4j` or `KAFKA_AGENT_UI=tui4j ./kafka-agent` | single column: chat with inline tool boxes (Ctrl+O expands) |
+The TamboUI front end has three panels: **Chat** (you + presenter) │ **Activity** (hand-offs, tool calls, one row each;
+Enter opens the detail overlay, Esc closes) · **Prompt**. Tab cycles panes.
 
 Library logs go to `~/.config/kafka-agent/kafka-agent.log` (override with `KAFKA_AGENT_LOG`), at WARN unless
 `KAFKA_AGENT_LOG_LEVEL=info|debug` — never to the terminal the UI is painting.
@@ -75,7 +70,7 @@ specialists, each with its own prompt and its own scoped tool list:
 | `presenter` | streams the answer; the only streaming agent, therefore last | none |
 
 The scope is persistent per session (`@MemoryId`), so state survives between turns; `/clear` evicts it.
-Hand-offs and tool calls appear live in the Activity pane (TamboUI) or as trace lines and collapsible tool boxes (tui4j).
+Hand-offs and tool calls appear live in the Activity pane.
 
 ## Slash commands
 
@@ -93,8 +88,8 @@ Hand-offs and tool calls appear live in the Activity pane (TamboUI) or as trace 
 | `/setup`, `/reset` | demo prompts from `demo.setup` / `demo.reset` in the config |
 | `/clear`, `/quit` | clear history (and the agentic scope) / exit |
 
-Keys (TamboUI): `Enter` send, `Tab` cycle Prompt → Chat → Activity, arrows select an Activity row, `Enter` on it opens the detail overlay, `Esc` closes,
-`PgUp`/`PgDn` or mouse wheel scroll, `Ctrl+C` quit. Keys (tui4j): `Tab` accepts a command suggestion, `Ctrl+O` expands tool output, `Esc`/`Ctrl+C` quit.
+Keys: `Enter` send, `Tab` cycle Prompt → Chat → Activity, arrows select an Activity row, `Enter` on it opens the detail overlay, `Esc` closes,
+`PgUp`/`PgDn` or mouse wheel scroll, `Ctrl+C` quit.
 
 ## Configuration
 
@@ -134,15 +129,15 @@ com.example.agent
 │   ├── AgentSystemFactory    supervisor + specialists + loop + presenter wiring, tool scopes, skills
 │   └── UiAgentListener       AgentListener → AgentEvents
 ├── tools/McpBridge           MCP clients, scoped ToolProviders
-├── tui2/BreweryApp           TamboUI three-panel front end (default)
-└── tui/                      tui4j Elm model, views, theme, markdown, slash commands (legacy)
+├── tui2/BreweryApp           TamboUI three-panel front end
+└── tui/                      slash-command parser and registry
 ```
 
 ## Demo
 
 `demo/DEMO-SCRIPT.md` has the six-act script with per-act hand-off narration, timings and recovery
 steps. `docs/agentic-migration-plan.md` is the architecture rationale, research and progress log
-(TamboUI port pending). `docs/brewmaster-agent.md` is the original single-agent design, kept for history.
+`docs/brewmaster-agent.md` is the original single-agent design, kept for history.
 
 ## Build targets
 
