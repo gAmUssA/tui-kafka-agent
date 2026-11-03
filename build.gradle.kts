@@ -20,29 +20,29 @@ repositories {
 
 dependencies {
     // Terminal UI: TamboUI toolkit on the JLine 3 backend (the backend brings JLine itself)
-    implementation(platform("dev.tamboui:tamboui-bom:0.4.0"))
+    implementation(platform("dev.tamboui:tamboui-bom:0.6.0"))
     implementation("dev.tamboui:tamboui-toolkit")
     implementation("dev.tamboui:tamboui-toolkit-markdown")
     implementation("dev.tamboui:tamboui-jline3-backend")
 
     // LangChain4j core + providers (GA, aligned by the BOM)
-    implementation(platform("dev.langchain4j:langchain4j-bom:1.20.0"))
+    implementation(platform("dev.langchain4j:langchain4j-bom:1.23.0"))
     implementation("dev.langchain4j:langchain4j")
     implementation("dev.langchain4j:langchain4j-anthropic")
     implementation("dev.langchain4j:langchain4j-ollama")
     // MCP client is still a beta artifact; the BOM does not manage it — pin explicitly
-    // and keep every beta on the same number as the core release (1.20.0 ↔ beta30).
-    implementation("dev.langchain4j:langchain4j-mcp:1.20.0-beta30")
+    // and keep every beta on the same number as the core release (1.23.0 ↔ beta33).
+    implementation("dev.langchain4j:langchain4j-mcp:1.23.0-beta33")
     // Multi-agent orchestration (supervisor, sequence, loop) — same beta train as MCP
-    implementation("dev.langchain4j:langchain4j-agentic:1.20.0-beta30")
+    implementation("dev.langchain4j:langchain4j-agentic:1.23.0-beta33")
     // Agent Skills (SKILL.md with progressive disclosure) — the flink-sql skill lives in resources/skills
-    implementation("dev.langchain4j:langchain4j-skills:1.20.0-beta30")
+    implementation("dev.langchain4j:langchain4j-skills:1.23.0-beta33")
 
     // Configuration
-    implementation("org.yaml:snakeyaml:2.2")
+    implementation("org.yaml:snakeyaml:2.7")
 
     // Logging
-    implementation("org.slf4j:slf4j-simple:2.0.9")
+    implementation("org.slf4j:slf4j-simple:2.0.20")
 }
 
 application {
