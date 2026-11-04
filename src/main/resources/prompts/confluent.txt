@@ -19,6 +19,18 @@ Rules (mandatory):
 - Use Avro with Schema Registry for ALL brewery topics. When producing, ALWAYS set
   useSchemaRegistry=true and schemaType="AVRO".
 - On the FIRST produce to a topic include the schema field; on later produces omit it.
+- value.message carries the RECORD ITSELF: a JSON object with EVERY field of the Avro
+  schema filled in with the reading's values. The tool's schema shows message as an
+  untyped object — that does not mean empty. Never send "message": {} and never send the
+  record as a JSON-encoded string; both fail with "Invalid message at <field>".
+  A complete produce-message call looks like this (later records omit "schema"):
+  {"topicName": "brewery-sensors",
+   "value": {"useSchemaRegistry": true, "schemaType": "AVRO",
+             "schema": "<the Avro schema JSON, first record only>",
+             "message": {"sensor_id": "fermenter-1", "batch_id": "IPA-2026-11",
+                         "beer_style": "IPA", "temperature_c": 18.4, "pressure_bar": 1.08,
+                         "ph": 4.6, "dissolved_o2_ppm": 0.3, "gravity": 1.052,
+                         "stage": "primary_fermentation", "timestamp": 1793750000000}}}
 - When consuming, set useSchemaRegistry=true so records deserialize.
 - For schema evolution, send an updated schema whose new fields have default values
   (backward compatible), then verify the new version with list-schemas.
