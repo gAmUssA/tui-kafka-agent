@@ -89,6 +89,7 @@ public final class AgentSystemFactory {
         var confluentBuilder = AgenticServices.agentBuilder(Agents.ConfluentAgent.class)
                 .chatModel(workerModel)
                 .systemMessage(Prompts.load(config, "confluent"))
+                .hallucinatedToolNameStrategy(ToolNameRecovery::reply)
                 .maxToolCallingRoundTrips(MAX_CONFLUENT_ROUND_TRIPS)
                 .executeToolsConcurrently();
         if (confluentTools != null) {
@@ -102,6 +103,7 @@ public final class AgentSystemFactory {
         var flinkOpsBuilder = AgenticServices.agentBuilder(Agents.FlinkOpsAgent.class)
                 .chatModel(workerModel)
                 .systemMessage(Prompts.load(config, "flink-ops"))
+                .hallucinatedToolNameStrategy(ToolNameRecovery::reply)
                 .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS);
         if (flinkOpsTools != null) {
             flinkOpsBuilder.toolProvider(flinkOpsTools);
@@ -237,6 +239,7 @@ public final class AgentSystemFactory {
         FlinkAgents.SqlAuthor author = AgenticServices.agentBuilder(FlinkAgents.SqlAuthor.class)
                 .chatModel(workerModel)
                 .systemMessage(Prompts.load(config, "sql-author") + flinkLocation + skillCatalogue)
+                .hallucinatedToolNameStrategy(ToolNameRecovery::reply)
                 .toolProviders(authoringTools)
                 .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS)
                 .build();
@@ -244,6 +247,7 @@ public final class AgentSystemFactory {
         FlinkAgents.SqlCritic critic = AgenticServices.agentBuilder(FlinkAgents.SqlCritic.class)
                 .chatModel(workerModel)
                 .systemMessage(Prompts.load(config, "sql-critic") + flinkLocation + skillCatalogue)
+                .hallucinatedToolNameStrategy(ToolNameRecovery::reply)
                 .toolProviders(authoringTools)
                 .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS)
                 .build();
@@ -251,6 +255,7 @@ public final class AgentSystemFactory {
         var submitterBuilder = AgenticServices.agentBuilder(FlinkAgents.SqlSubmitter.class)
                 .chatModel(workerModel)
                 .systemMessage(Prompts.load(config, "sql-submitter"))
+                .hallucinatedToolNameStrategy(ToolNameRecovery::reply)
                 .maxToolCallingRoundTrips(MAX_TOOL_ROUND_TRIPS);
         if (writeTools != null) {
             submitterBuilder.toolProvider(writeTools);

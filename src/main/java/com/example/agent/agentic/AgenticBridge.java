@@ -3,6 +3,8 @@ package com.example.agent.agentic;
 import com.example.agent.agent.AgentEvent;
 import com.example.agent.agent.ConversationBridge;
 import dev.langchain4j.service.TokenStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,6 +20,8 @@ import java.util.concurrent.Executors;
 public final class AgenticBridge implements ConversationBridge {
 
     private static final String SESSION = "default";
+    // The UI shows only the top-level message; the cause chain goes to the log file.
+    private static final Logger LOG = LoggerFactory.getLogger(AgenticBridge.class);
 
     private final Agents.BrewerySystem system;
     private final AgentEvent.Sink sink;
@@ -49,9 +53,11 @@ public final class AgenticBridge implements ConversationBridge {
 
     private void run(String userInput) {
         TokenStream stream;
+        DestructiveGuard.beginTurn(userInput);
         try {
             stream = system.chat(SESSION, userInput);
         } catch (RuntimeException e) {
+            LOG.warn("Agentic turn failed in the supervisor", e);
             sink.accept(new AgentEvent.Failed(Agents.SUPERVISOR, unwrap(e)));
             return;
         }
@@ -63,7 +69,10 @@ public final class AgenticBridge implements ConversationBridge {
                     sink.accept(new AgentEvent.Token(token));
                 })
                 .onCompleteResponse(r -> sink.accept(new AgentEvent.Completed(full.toString())))
-                .onError(err -> sink.accept(new AgentEvent.Failed(Agents.PRESENTER, err)))
+                .onError(err -> {
+                    LOG.warn("Agentic turn failed while the presenter streamed", err);
+                    sink.accept(new AgentEvent.Failed(Agents.PRESENTER, err));
+                })
                 .start();
     }
 

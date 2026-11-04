@@ -26,7 +26,7 @@ final class ToolScopes {
     // the agent enumerate infrastructure repeatedly (6× list-clusters in one turn).
 
     /** Kafka, Schema Registry, tags. */
-    static final Predicate<String> CONFLUENT = CONFLUENT_TOOLS::contains;
+    static final Predicate<String> CONFLUENT = DestructiveGuard.guard(CONFLUENT_TOOLS::contains);
 
     private static final Set<String> FLINK_READ_TOOLS = Set.of(
             "list-flink-catalogs", "list-flink-databases", "list-flink-tables",
@@ -48,5 +48,5 @@ final class ToolScopes {
     static final Predicate<String> FLINK_SUBMIT = FLINK_SUBMIT_TOOLS::contains;
 
     /** Manage existing statements — for the flinkOps specialist. */
-    static final Predicate<String> FLINK_OPS = FLINK_OPS_TOOLS::contains;
+    static final Predicate<String> FLINK_OPS = DestructiveGuard.guard(FLINK_OPS_TOOLS::contains);
 }
