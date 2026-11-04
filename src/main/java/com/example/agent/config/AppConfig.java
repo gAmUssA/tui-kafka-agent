@@ -80,7 +80,54 @@ public final class AppConfig {
      * {@link IllegalArgumentException} if the configured value is not recognized.
      */
     public Provider getProvider() {
+        String env = System.getenv("KAFKA_AGENT_PROVIDER");
+        if (env != null && !env.isBlank()) {
+            return Provider.fromString(env.trim());
+        }
         return Provider.fromString(getStringValue("provider", "anthropic"));
+    }
+
+    /** Default model name for a provider, as configured. */
+    public String getModel(Provider provider) {
+        return switch (provider) {
+            case ANTHROPIC -> getAnthropicModel();
+            case OLLAMA -> getOllamaModel();
+            case FIREWORKS, OPENAI -> getOpenAiCompatible(provider).model();
+        };
+    }
+
+    // ------------------------------------------------------------------
+    // Typed getters — OpenAI-compatible providers (fireworks, openai)
+    // ------------------------------------------------------------------
+
+    /** Connection settings for a provider reached through the OpenAI-compatible client. */
+    public record OpenAiCompatibleSettings(
+            String apiKey, String baseUrl, String model, int maxTokens, int timeoutSeconds) {
+    }
+
+    /**
+     * Settings under {@code fireworks.*} or {@code openai.*}.
+     *
+     * @throws IllegalArgumentException if {@code provider} is not OpenAI-compatible
+     */
+    public OpenAiCompatibleSettings getOpenAiCompatible(Provider provider) {
+        String prefix = switch (provider) {
+            case FIREWORKS -> "fireworks";
+            case OPENAI -> "openai";
+            default -> throw new IllegalArgumentException(provider + " is not an OpenAI-compatible provider");
+        };
+        String defaultUrl = provider == Provider.FIREWORKS
+                ? "https://api.fireworks.ai/inference/v1"
+                : "https://api.openai.com/v1";
+        String defaultModel = provider == Provider.FIREWORKS
+                ? "accounts/fireworks/models/deepseek-v4p1-flash"
+                : "";
+        return new OpenAiCompatibleSettings(
+                getStringValue(prefix + ".api-key", ""),
+                getStringValue(prefix + ".base-url", defaultUrl),
+                getStringValue(prefix + ".model", defaultModel),
+                getIntValue(prefix + ".max-tokens", 4096),
+                getIntValue(prefix + ".timeout-seconds", 300));
     }
 
     // ------------------------------------------------------------------
@@ -498,7 +545,7 @@ public final class AppConfig {
         } catch (IllegalArgumentException e) {
             System.err.println();
             System.err.println("ERROR: " + e.getMessage());
-            System.err.println("Set 'provider: anthropic' or 'provider: ollama' in your config.");
+            System.err.println("Set 'provider' to anthropic, ollama, fireworks or openai in your config (or KAFKA_AGENT_PROVIDER).");
             System.err.println();
             System.exit(1);
             return;
@@ -517,6 +564,20 @@ public final class AppConfig {
                 System.err.println("     Set 'anthropic.api-key' to your key value.");
                 System.err.println();
                 System.err.println("Or switch to a local provider with 'provider: ollama' in your config.");
+                System.err.println();
+                System.exit(1);
+            }
+        }
+
+        if (provider.isOpenAiCompatible()) {
+            OpenAiCompatibleSettings s = getOpenAiCompatible(provider);
+            String keyVar = provider == Provider.FIREWORKS ? "FIREWORKS_API_KEY" : "OPENAI_API_KEY";
+            if (s.apiKey().isBlank() || s.model().isBlank()) {
+                System.err.println();
+                System.err.println("ERROR: provider '" + provider + "' needs " + provider + ".api-key and "
+                        + provider + ".model in the config.");
+                System.err.println("The template reads the key from " + keyVar
+                        + " — launch with: opwith " + provider + " ./kafka-agent");
                 System.err.println();
                 System.exit(1);
             }

@@ -126,7 +126,7 @@ public final class BreweryApp extends ToolkitApp {
         this.mcpBridge = mcpBridge;
         this.agenticEnabled = agentic;
         this.activeProvider = config.getProvider();
-        this.activeModel = (activeProvider == Provider.OLLAMA) ? config.getOllamaModel() : config.getAnthropicModel();
+        this.activeModel = config.getModel(activeProvider);
         this.chatWrap = config.getUiChatWrap();
         this.activityWrap = config.getUiActivityWrap();
         this.usage = new UsageTracker();
@@ -217,7 +217,7 @@ public final class BreweryApp extends ToolkitApp {
         String mode = bridge != null ? bridge.modeLabel() : "";
         var parts = new ArrayList<Element>();
         parts.add(text(" " + config.getAppName() + " ").bold().fg(Color.BLACK).bg(Color.CYAN));
-        parts.add(text("  " + activeProvider + ":" + shortModel(activeModel)).fg(Color.CYAN));
+        parts.add(text("  " + activeProvider + ":" + ModelSwitcher.shortName(activeModel)).fg(Color.CYAN));
         if (!mode.isEmpty()) {
             parts.add(text("  │ " + mode).fg(HANDOFF));
         }
@@ -289,14 +289,6 @@ public final class BreweryApp extends ToolkitApp {
         return String.format("  tokens: %,d in · %,d out%s  last %d ms  %d req%s%s",
                 s.inputTokens(), s.outputTokens(), cost, s.lastLatencyMs(), s.requests(),
                 s.requests() == 1 ? "" : "s", s.errors() > 0 ? "  " + s.errors() + " err" : "");
-    }
-
-    private static String shortModel(String model) {
-        if (model == null) return "?";
-        if (model.contains("sonnet")) return "sonnet";
-        if (model.contains("haiku")) return "haiku";
-        if (model.contains("opus")) return "opus";
-        return model;
     }
 
     // ------------------------------------------------------------------
@@ -541,7 +533,7 @@ public final class BreweryApp extends ToolkitApp {
             }
             case "model" -> {
                 if (cmd.args().isEmpty()) {
-                    system("Current: " + activeProvider + ":" + activeModel + "\nUsage: /model <name> | anthropic:<name> | ollama:<name>\nAliases: " + ModelSwitcher.anthropicAliases());
+                    system("Current: " + activeProvider + ":" + activeModel + "\nUsage: /model <alias> | <name> | <provider>:<name>  (providers: anthropic, fireworks, openai, ollama)\nAliases: " + ModelSwitcher.aliasNames());
                     return;
                 }
                 try {

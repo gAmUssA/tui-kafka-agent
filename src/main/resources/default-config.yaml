@@ -62,6 +62,24 @@ anthropic:
 ##   llama3.1:8b  — 4.9GB, decent tool calling, well-supported
 ## Models WITHOUT tool support (3.x haiku-class, base llama2, codellama) will
 ## silently ignore tool definitions — you'll get prompt-only responses.
+## Open-weight models on Fireworks AI (OpenAI-compatible API). Select with
+## provider: fireworks, KAFKA_AGENT_PROVIDER=fireworks, or at runtime /model deepseek|kimi|ember|glm.
+## The planner follows the provider, so the whole team switches. Key: opwith fireworks ./kafka-agent
+fireworks:
+  api-key: ${FIREWORKS_API_KEY}
+  base-url: https://api.fireworks.ai/inference/v1
+  model: accounts/fireworks/models/deepseek-v4p1-flash
+  max-tokens: 4096
+  timeout-seconds: 300
+
+## OpenAI (same client as Fireworks). Set a model before selecting provider: openai.
+openai:
+  api-key: ${OPENAI_API_KEY}
+  base-url: https://api.openai.com/v1
+  model: ""
+  max-tokens: 4096
+  timeout-seconds: 300
+
 ollama:
   base-url: http://localhost:11434
   model: qwen2.5:7b

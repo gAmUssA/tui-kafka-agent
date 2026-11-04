@@ -34,6 +34,8 @@ public final class ChatModelFactory {
             case ANTHROPIC -> AnthropicConfig.createStreamingModel(
                     config, modelOverride, thinkingEnabled, listener);
             case OLLAMA -> OllamaConfig.createStreamingModel(config, modelOverride, listener);
+            case FIREWORKS, OPENAI -> OpenAiCompatibleConfig.createStreamingModel(
+                    config, provider, modelOverride, listener);
         };
     }
 
@@ -48,6 +50,8 @@ public final class ChatModelFactory {
             case ANTHROPIC -> AnthropicConfig.createChatModel(
                     config, modelOverride, thinkingEnabled, listener);
             case OLLAMA -> OllamaConfig.createChatModel(config, modelOverride, listener);
+            case FIREWORKS, OPENAI -> OpenAiCompatibleConfig.createChatModel(
+                    config, provider, modelOverride, listener);
         };
     }
 }
