@@ -7,6 +7,9 @@ import dev.langchain4j.agentic.observability.AgentRequest;
 import dev.langchain4j.agentic.observability.AgentResponse;
 import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,11 +76,27 @@ final class UiAgentListener implements AgentListener {
         sink.accept(new AgentEvent.ToolStarted(e.agentInstance().name(), req.name(), req.arguments()));
     }
 
+    // INFO-level trail of every tool call (KAFKA_AGENT_LOG_LEVEL=info): the TUI shows
+    // results only in an overlay, which is useless for diagnosing a run after the fact.
+    private static final Logger TOOL_LOG = LoggerFactory.getLogger("kafka-agent.tools");
+
     @Override
     public void afterAgentToolExecution(AfterAgentToolExecution e) {
         var exec = e.toolExecution();
+        if (TOOL_LOG.isInfoEnabled()) {
+            TOOL_LOG.info("{} {} args={} -> {}", e.agentInstance().name(), exec.request().name(),
+                    abbreviate(exec.request().arguments(), 1500), abbreviate(exec.result(), 600));
+        }
         sink.accept(new AgentEvent.ToolFinished(
                 e.agentInstance().name(), exec.request().name(), exec.result()));
+    }
+
+    private static String abbreviate(String s, int max) {
+        if (s == null) {
+            return "null";
+        }
+        String flat = s.replace('\n', ' ');
+        return flat.length() <= max ? flat : flat.substring(0, max) + "…";
     }
 
     // Errors are reported once, by AgenticBridge, from the exception that
