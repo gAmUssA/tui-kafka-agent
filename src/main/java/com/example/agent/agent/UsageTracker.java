@@ -5,6 +5,8 @@ import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
 import dev.langchain4j.model.chat.listener.ChatModelResponseContext;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
+import dev.langchain4j.model.openai.OpenAiTokenUsage;
 import dev.langchain4j.model.output.TokenUsage;
 
 import java.util.Map;
@@ -39,16 +41,27 @@ public final class UsageTracker implements ChatModelListener {
             long lastLatencyMs) {
     }
 
-    /** Per-1M-token pricing in USD. Models not in this map contribute $0 to cost. */
-    private record Pricing(double inputPerMillion, double outputPerMillion) {
+    /**
+     * Per-1M-token pricing in USD. Models not in this map contribute $0 to cost.
+     * {@code cachedInputPerMillion} prices prompt-cache reads; {@code cacheWritePerMillion}
+     * prices Anthropic cache writes (OpenAI-compatible providers do not report them).
+     */
+    record Pricing(double inputPerMillion, double cachedInputPerMillion,
+                           double cacheWritePerMillion, double outputPerMillion) {
     }
 
     // Add models you actually use. Keys are LangChain4j-reported model names
     // (i.e. exactly what comes back in ChatResponseMetadata.modelName()).
+    // Anthropic: cache reads 0.1x input, 5-minute cache writes 1.25x input.
+    // Fireworks: standard serverless list prices, checked 2026-11-03 (docs.fireworks.ai/serverless/pricing).
     private static final Map<String, Pricing> PRICES = Map.of(
-            "claude-sonnet-4-6", new Pricing(3.00, 15.00),
-            "claude-opus-4-7",   new Pricing(15.00, 75.00),
-            "claude-haiku-4-5",  new Pricing(1.00, 5.00)
+            "claude-sonnet-4-6", new Pricing(3.00, 0.30, 3.75, 15.00),
+            "claude-opus-4-7",   new Pricing(15.00, 1.50, 18.75, 75.00),
+            "claude-haiku-4-5",  new Pricing(1.00, 0.10, 1.25, 5.00),
+            "accounts/fireworks/models/deepseek-v4p1-flash", new Pricing(0.30, 0.006, 0, 1.20),
+            "accounts/fireworks/models/kimi-k3",             new Pricing(3.00, 0.30, 0, 15.00),
+            "accounts/fireworks/models/ember-1",             new Pricing(3.00, 0.30, 0, 15.00),
+            "accounts/fireworks/models/glm-5p3-flash",       new Pricing(0.15, 0.03, 0, 0.50)
             // Ollama models intentionally absent — local inference is free
     );
 
@@ -92,10 +105,9 @@ public final class UsageTracker implements ChatModelListener {
             outputTokens.addAndGet(out);
             totalTokens.addAndGet(tot > 0 ? tot : in + out);
 
-            Pricing p = PRICES.get(md.modelName());
+            Pricing p = pricingFor(md.modelName());
             if (p != null) {
-                costUsd.add((in / 1_000_000.0) * p.inputPerMillion
-                        + (out / 1_000_000.0) * p.outputPerMillion);
+                costUsd.add(cost(p, usage));
             }
         }
     }
@@ -128,6 +140,52 @@ public final class UsageTracker implements ChatModelListener {
         costUsd.reset();
         lastLatencyMs = 0;
         lastModel = "";
+    }
+
+    /**
+     * Price entry for a reported model name. Providers may report a dated id
+     * ({@code claude-haiku-4-5-20251001}), so the longest table key that prefixes
+     * the name wins. Returns {@code null} for unpriced (local) models.
+     */
+    static Pricing pricingFor(String modelName) {
+        if (modelName == null) {
+            return null;
+        }
+        Pricing exact = PRICES.get(modelName);
+        if (exact != null) {
+            return exact;
+        }
+        String best = null;
+        for (String key : PRICES.keySet()) {
+            if (modelName.startsWith(key) && (best == null || key.length() > best.length())) {
+                best = key;
+            }
+        }
+        return best == null ? null : PRICES.get(best);
+    }
+
+    /**
+     * Cost of one response. Anthropic reports cache reads and writes on top of
+     * {@code input_tokens}; OpenAI-compatible providers report cached tokens as a
+     * subset of {@code prompt_tokens}.
+     */
+    static double cost(Pricing p, TokenUsage usage) {
+        long in = nz(usage.inputTokenCount());
+        long out = nz(usage.outputTokenCount());
+        long cacheRead = 0;
+        long cacheWrite = 0;
+        long uncachedIn = in;
+        if (usage instanceof AnthropicTokenUsage a) {
+            cacheRead = nz(a.cacheReadInputTokens());
+            cacheWrite = nz(a.cacheCreationInputTokens());
+        } else if (usage instanceof OpenAiTokenUsage o && o.inputTokensDetails() != null) {
+            cacheRead = Math.min(in, nz(o.inputTokensDetails().cachedTokens()));
+            uncachedIn = in - cacheRead;
+        }
+        return (uncachedIn * p.inputPerMillion
+                + cacheRead * p.cachedInputPerMillion
+                + cacheWrite * p.cacheWritePerMillion
+                + out * p.outputPerMillion) / 1_000_000.0;
     }
 
     private static long nz(Integer v) {
