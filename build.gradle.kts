@@ -30,6 +30,8 @@ dependencies {
     implementation("dev.langchain4j:langchain4j")
     implementation("dev.langchain4j:langchain4j-anthropic")
     implementation("dev.langchain4j:langchain4j-ollama")
+    // OpenAI-compatible client: OpenAI itself and Fireworks AI (open-weight models)
+    implementation("dev.langchain4j:langchain4j-open-ai")
     // MCP client is still a beta artifact; the BOM does not manage it — pin explicitly
     // and keep every beta on the same number as the core release (1.23.0 ↔ beta33).
     implementation("dev.langchain4j:langchain4j-mcp:1.23.0-beta33")
@@ -43,6 +45,14 @@ dependencies {
 
     // Logging
     implementation("org.slf4j:slf4j-simple:2.0.20")
+
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 application {

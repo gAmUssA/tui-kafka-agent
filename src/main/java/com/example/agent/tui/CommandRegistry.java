@@ -28,7 +28,7 @@ public final class CommandRegistry {
         new CommandInfo("help", "", "Show this help message"),
         new CommandInfo("clear", "", "Clear chat history"),
         new CommandInfo("tools", "", "List available tools"),
-        new CommandInfo("model", "[<provider>:]<name>", "Switch model (sonnet, haiku, opus, ollama:qwen2.5:7b, ...)"),
+        new CommandInfo("model", "[<provider>:]<name>", "Switch model (sonnet, opus, deepseek, kimi, ember, glm, ollama:qwen2.5:7b, ...)"),
         new CommandInfo("thinking", "", "Toggle extended thinking mode"),
         new CommandInfo("mcp", "[name] <url> | disconnect [name]", "Manage MCP servers"),
         new CommandInfo("usage", "[reset]", "Show token usage and cost; reset clears totals"),

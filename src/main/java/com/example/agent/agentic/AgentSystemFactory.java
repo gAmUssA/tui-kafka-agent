@@ -274,18 +274,15 @@ public final class AgentSystemFactory {
     }
 
     /**
-     * The planner is always Anthropic when a key is configured — local models
-     * plan poorly. Falls back to the worker provider otherwise.
+     * The planner runs on the same provider and model as the specialists, so switching
+     * provider swaps the whole team — a fair model comparison. On Anthropic,
+     * {@code agentic.planner-model} may pick a different Claude model for the planner.
      */
     private static ChatModel plannerModel(AppConfig config, Provider provider, String modelOverride, UsageTracker usage) {
-        boolean haveAnthropic = !config.getAnthropicApiKey().isBlank();
-        if (haveAnthropic) {
+        if (provider == Provider.ANTHROPIC && modelOverride == null) {
             return ChatModelFactory.createBlocking(
                     config, Provider.ANTHROPIC, config.getAgenticPlannerModel(), false, usage);
         }
-        // Logged, not printed: stderr is the terminal the TUI paints on.
-        org.slf4j.LoggerFactory.getLogger(AgentSystemFactory.class)
-                .warn("No Anthropic key; using {} as supervisor planner (expect weaker plans).", provider);
         return ChatModelFactory.createBlocking(config, provider, modelOverride, false, usage);
     }
 }

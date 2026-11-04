@@ -7,7 +7,15 @@ package com.example.agent.agent;
  */
 public enum Provider {
     ANTHROPIC,
-    OLLAMA;
+    OLLAMA,
+    /** Open-weight models on Fireworks AI, through its OpenAI-compatible API. */
+    FIREWORKS,
+    OPENAI;
+
+    /** True for providers reached through the OpenAI-compatible client. */
+    public boolean isOpenAiCompatible() {
+        return this == FIREWORKS || this == OPENAI;
+    }
 
     /**
      * Parse a provider name from user input or config.
@@ -22,8 +30,10 @@ public enum Provider {
         return switch (s.toLowerCase()) {
             case "anthropic" -> ANTHROPIC;
             case "ollama" -> OLLAMA;
+            case "fireworks" -> FIREWORKS;
+            case "openai" -> OPENAI;
             default -> throw new IllegalArgumentException(
-                    "Unknown provider: " + s + " (supported: anthropic, ollama)");
+                    "Unknown provider: " + s + " (supported: anthropic, ollama, fireworks, openai)");
         };
     }
 
