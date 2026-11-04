@@ -14,6 +14,7 @@
 - [ ] `./gradlew shadowJar` after pulling — the launcher only builds if the JAR is missing
 - [ ] **Terminal font for the room** (toolkit rule: nothing under 24 pt text / 18 pt code; Kawasaki: oldest attendee's age ÷ 2 — a 50-year-old means 25 pt). On a 1080p projector a 24 pt monospace gives ~133 columns × 37 rows, which is exactly what the three-panel UI needs: set the terminal to **24 pt** (JetBrains Mono / Menlo) and use the `ui.chat-wrap: 76` / `ui.activity-wrap: 44` stage values already in `docs/brewmaster-config.yaml`. At 4K or on a 16:10 laptop mirror, 28 pt still fits. Check it from the back of the room before the audience arrives; dark background.
 - [ ] Run `/reset` if topics exist from a previous run (it routes to `flinkOps` for statements and `confluent` for topics, tags, schemas)
+- [ ] **After every `/reset`, restart mcp-confluent, then reconnect the app** (`/mcp confluent http://127.0.0.1:8080/mcp`, or relaunch). The server caches schema registrations; `/reset` deletes the subjects behind its back, and afterwards every produce reports success without registering the Avro schema. Records land as raw JSON, Flink sees only `key`/`val` bytes, and Act 4 gets no alerts. Found 2026-11-04; the restart is the fix.
 - [ ] Verify no stale schemas: ask "list the brewery schemas" — `brewery-sensors-value` should not exist
 - [ ] Verify no stale statements: ask "list the running brewery Flink statements" — none should remain
 - [ ] Verify `./kafka-agent` launches and shows "Brewmaster Agent │ anthropic:sonnet │ agentic │ MCP: 73 tools" in the header
@@ -61,7 +62,9 @@ Budget per act in agentic mode (measured 2026-11-03): Act 1 50 s / $0.05 · Act 
 ## Act 3 — "Watch the Brewery" (~2.5 min)
 
 **Type:**
-> Create a Flink SQL job that monitors for temperature anomalies — alert if any fermenter drifts more than 2 degrees above its style's normal range in a 10-second window. Write alerts to brewery-alerts.
+> Create a Flink SQL job that alerts on every sensor reading where a fermenter's temperature is more than 2 degrees above its style's normal range — no windows, one alert per reading. Write alerts to brewery-alerts.
+
+**Why no window**: a windowed job emits only after the watermark passes the window end, and Confluent Cloud's default watermark needs far more records than a demo produces — at rehearsal (2026-11-04) windowed jobs stayed RUNNING with 0 alerts. A per-reading filter alerts the moment Act 4's hot readings land. If someone asks about windows, that is the talking point: event time, watermarks, and why the agent explains the silence correctly.
 
 **What happens** (this is the money act — narrate the trace):
 1. `brewmaster` turns the ask into thresholds per style and a window length.
